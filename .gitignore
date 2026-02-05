@@ -1,0 +1,27 @@
+*.iml
+.idea/
+.gradle/
+local.properties
+.DS_Store
+Thumbs.db
+
+**/build/
+**/.cxx/
+**/.externalNativeBuild/
+captures/
+
+*.log
+*.hprof
+*.apk
+*.aab
+
+# ncnn prebuilt
+app/src/main/jni/ncnn-*/
+app/src/main/jni/*.zip
+
+# models
+app/src/main/assets/*.bin
+app/src/main/assets/*.param
+
+# logs
+logcat.log
