@@ -18,6 +18,7 @@ class FeatureExtractor(
 
     fun encodeText(text: String): FloatArray {
         val ids = tokenizer.encode(text, 52)
+        android.util.Log.d("CLIP_DEBUG", "Token IDs: ${ids.toList().take(20).joinToString()}")
         return clip.encodeText(ids)
     }
 }

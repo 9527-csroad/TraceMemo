@@ -147,6 +147,53 @@ void SDPA_layer_destroyer(ncnn::Layer* layer, void* /*userdata*/)
     delete layer;
 }
 
+// Bicubic weight (Catmull-Rom, a=-0.5, same as PIL.Image.BICUBIC)
+static inline float bicubic_w(float x)
+{
+    x = std::abs(x);
+    if (x < 1.f) return ((1.5f * x - 2.5f) * x) * x + 1.f;
+    if (x < 2.f) return ((-0.5f * x + 2.5f) * x - 4.f) * x + 2.f;
+    return 0.f;
+}
+
+// Bicubic resize RGB uint8 HWC → ncnn::Mat CHW float32 [0,255]
+static ncnn::Mat bicubic_resize_rgb(const unsigned char* src, int sw, int sh, int dw, int dh)
+{
+    ncnn::Mat dst(dw, dh, 3, (size_t)4u);
+    const float rx = (float)sw / (float)dw;
+    const float ry = (float)sh / (float)dh;
+
+    for (int c = 0; c < 3; c++)
+    {
+        float* dp = dst.channel(c);
+        for (int dy = 0; dy < dh; dy++)
+        {
+            const float fy = ((float)dy + 0.5f) * ry - 0.5f;
+            const int iy = (int)std::floor(fy);
+            const float ty = fy - (float)iy;
+            for (int dx = 0; dx < dw; dx++)
+            {
+                const float fx = ((float)dx + 0.5f) * rx - 0.5f;
+                const int ix = (int)std::floor(fx);
+                const float tx = fx - (float)ix;
+                float v = 0.f;
+                for (int j = -1; j <= 2; j++)
+                {
+                    const int py = std::max(0, std::min(iy + j, sh - 1));
+                    const float wy = bicubic_w((float)j - ty);
+                    for (int i = -1; i <= 2; i++)
+                    {
+                        const int px = std::max(0, std::min(ix + i, sw - 1));
+                        v += bicubic_w((float)i - tx) * wy * (float)src[((size_t)py * sw + px) * 3 + c];
+                    }
+                }
+                dp[(size_t)dy * dw + dx] = std::max(0.f, std::min(255.f, v));
+            }
+        }
+    }
+    return dst;
+}
+
 static inline void l2_normalize(float* v, int n)
 {
     float s = 0.f;
@@ -204,15 +251,15 @@ static inline void set_net_opt(ncnn::Net& net, bool use_vulkan)
 #endif
     net.opt.lightmode = true;
     net.opt.num_threads = 4;
-    net.opt.use_int8_inference = false;
-    net.opt.use_bf16_storage = false;
+    net.opt.use_packing_layout = false;
     net.opt.use_fp16_packed = false;
     net.opt.use_fp16_storage = false;
     net.opt.use_fp16_arithmetic = false;
+    net.opt.use_bf16_storage = false;
+    net.opt.use_int8_inference = false;
     net.opt.use_int8_packed = false;
     net.opt.use_int8_storage = false;
     net.opt.use_int8_arithmetic = false;
-    net.opt.use_packing_layout = false;
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
@@ -228,9 +275,11 @@ Java_com_example_picsearch_ml_NcnnClip_initNative(
     g_text.clear();
 
     g_visual.register_custom_layer("SDPA", SDPA_layer_creator, SDPA_layer_destroyer);
+    g_text.register_custom_layer("SDPA", SDPA_layer_creator, SDPA_layer_destroyer);
     const bool visual_has_sdpa = asset_contains(mgr, "clip_vision.param", "SDPA");
+    const bool text_has_sdpa = asset_contains(mgr, "clip_text.param", "SDPA");
     set_net_opt(g_visual, (useVulkan == JNI_TRUE) && !visual_has_sdpa);
-    set_net_opt(g_text, useVulkan == JNI_TRUE);
+    set_net_opt(g_text, (useVulkan == JNI_TRUE) && !text_has_sdpa);
 
     if (g_visual.load_param(mgr, "clip_vision.param") != 0) return JNI_FALSE;
     if (g_visual.load_model(mgr, "clip_vision.bin") != 0) return JNI_FALSE;
@@ -259,12 +308,15 @@ Java_com_example_picsearch_ml_NcnnClip_encodeImageNative(
         return nullptr;
     }
 
-    // CLIP expects RGB
     ncnn::Mat in;
     if (info.format == ANDROID_BITMAP_FORMAT_RGBA_8888)
     {
-        in = ncnn::Mat::from_pixels_resize((const unsigned char*)pixels, ncnn::Mat::PIXEL_RGBA2RGB,
-                                           (int)info.width, (int)info.height, (int)info.stride, 224, 224);
+        const unsigned char* p = (const unsigned char*)pixels;
+        __android_log_print(ANDROID_LOG_DEBUG, "CLIP_DEBUG",
+            "Pixel[0] bytes: %02x %02x %02x %02x (RGBA or BGRA?), size=%dx%d stride=%d",
+            p[0], p[1], p[2], p[3], (int)info.width, (int)info.height, (int)info.stride);
+        in = ncnn::Mat::from_pixels((const unsigned char*)pixels, ncnn::Mat::PIXEL_RGBA2RGB,
+                                    (int)info.width, (int)info.height, (int)info.stride);
     }
     else if (info.format == ANDROID_BITMAP_FORMAT_RGB_565)
     {
@@ -286,7 +338,7 @@ Java_com_example_picsearch_ml_NcnnClip_encodeImageNative(
                 out[x * 3 + 2] = (unsigned char)((b5 << 3) | (b5 >> 2));
             }
         }
-        in = ncnn::Mat::from_pixels_resize(rgb.data(), ncnn::Mat::PIXEL_RGB, w, h, 224, 224);
+        in = ncnn::Mat::from_pixels(rgb.data(), ncnn::Mat::PIXEL_RGB, w, h);
     }
     else
     {
@@ -296,8 +348,8 @@ Java_com_example_picsearch_ml_NcnnClip_encodeImageNative(
 
     AndroidBitmap_unlockPixels(env, bitmap);
 
-    const float mean_vals[3] = {122.77f, 116.75f, 104.09f};
-    const float norm_vals[3] = {0.01459f, 0.01500f, 0.01422f};
+    const float mean_vals[3] = { 0.48145466f * 255.f, 0.4578275f * 255.f, 0.40821073f * 255.f };
+    const float norm_vals[3] = { 1.f / (0.26862954f * 255.f), 1.f / (0.26130258f * 255.f), 1.f / (0.27577711f * 255.f) };
     in.substract_mean_normalize(mean_vals, norm_vals);
 
     ncnn::Extractor ex = g_visual.create_extractor();
@@ -309,7 +361,14 @@ Java_com_example_picsearch_ml_NcnnClip_encodeImageNative(
     std::vector<float> feat;
     if (!mat_to_float_vec(out, feat)) return nullptr;
     const int dim = (int)feat.size();
+
+    __android_log_print(ANDROID_LOG_DEBUG, "CLIP_DEBUG", "Image feat before L2 [0..4]: %f %f %f %f %f", 
+        feat[0], feat[1], feat[2], feat[3], feat[4]);
+
     l2_normalize(feat.data(), dim);
+
+    __android_log_print(ANDROID_LOG_DEBUG, "CLIP_DEBUG", "Image feat after L2 [0..4]: %f %f %f %f %f, dim=%d", 
+        feat[0], feat[1], feat[2], feat[3], feat[4], dim);
 
     jfloatArray jarr = env->NewFloatArray(dim);
     if (!jarr) return nullptr;
@@ -329,14 +388,21 @@ Java_com_example_picsearch_ml_NcnnClip_encodeTextNative(
     jint* ids = env->GetIntArrayElements(tokenIds, nullptr);
     if (!ids) return nullptr;
 
-    // Embed expects int token ids
-    ncnn::Mat in(52, (size_t)4u);
-    int* pids = (int*)in.data;
+    // in0: int32 token IDs (Embed bitcast)
+    ncnn::Mat in0(52, (size_t)4u);
+    int* pids = (int*)in0.data;
     for (int i = 0; i < 52; i++) pids[i] = (int)ids[i];
+
+    // in1: float32 attention mask
+    ncnn::Mat in1(52, (size_t)4u);
+    float* mask = (float*)in1.data;
+    for (int i = 0; i < 52; i++) mask[i] = (ids[i] != 0) ? 1.0f : 0.0f;
+
     env->ReleaseIntArrayElements(tokenIds, ids, JNI_ABORT);
 
     ncnn::Extractor ex = g_text.create_extractor();
-    ex.input("in0", in);
+    ex.input("in0", in0);
+    ex.input("in1", in1);
 
     ncnn::Mat out;
     if (ex.extract("out0", out) != 0) return nullptr;
@@ -344,7 +410,14 @@ Java_com_example_picsearch_ml_NcnnClip_encodeTextNative(
     std::vector<float> feat;
     if (!mat_to_float_vec(out, feat)) return nullptr;
     const int dim = (int)feat.size();
+
+    __android_log_print(ANDROID_LOG_DEBUG, "CLIP_DEBUG", "Text feat before L2 [0..4]: %f %f %f %f %f", 
+        feat[0], feat[1], feat[2], feat[3], feat[4]);
+
     l2_normalize(feat.data(), dim);
+
+    __android_log_print(ANDROID_LOG_DEBUG, "CLIP_DEBUG", "Text feat after L2 [0..4]: %f %f %f %f %f, dim=%d", 
+        feat[0], feat[1], feat[2], feat[3], feat[4], dim);
 
     jfloatArray jarr = env->NewFloatArray(dim);
     if (!jarr) return nullptr;

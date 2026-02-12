@@ -2,13 +2,20 @@
 .idea/
 .gradle/
 local.properties
+.kotlin/
+.settings/
+.classpath
+.project
 .DS_Store
 Thumbs.db
 
 **/build/
 **/.cxx/
 **/.externalNativeBuild/
+**/.kotlin/
 captures/
+out/
+.externalNativeBuild/
 
 *.log
 *.hprof
@@ -25,3 +32,9 @@ app/src/main/assets/*.param
 
 # logs
 logcat.log
+
+# images
+test_images/
+
+# cnclip project
+Chinese-CLIP/
