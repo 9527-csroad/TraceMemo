@@ -5,16 +5,31 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -23,9 +38,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.example.picsearch.MainViewModel
@@ -33,27 +53,34 @@ import com.example.picsearch.data.LocationBounds
 import com.example.picsearch.data.LocationCluster
 import com.example.picsearch.data.SearchFilter
 import com.example.picsearch.data.TimeRange
-import com.example.picsearch.ui.component.FilterToggleHeader
+import com.example.picsearch.ui.component.ActiveFilterTags
+import com.example.picsearch.ui.component.EmptyStateView
+import com.example.picsearch.ui.component.FilterEntryRow
+import com.example.picsearch.ui.component.ImageDetail
+import com.example.picsearch.ui.component.ImageDetailSheet
 import com.example.picsearch.ui.component.ImageGrid
+import com.example.picsearch.ui.component.IndexProgressView
+import com.example.picsearch.ui.component.NoResultsView
 import com.example.picsearch.ui.component.SearchFilterPanel
+import com.example.picsearch.ui.component.SkeletonCard
+import com.example.picsearch.ui.theme.Primary
 
 @Composable
 fun MainScreen(vm: MainViewModel) {
     var query by remember { mutableStateOf("") }
-    val ready by vm.ready.collectAsState()
     val count by vm.indexedCount.collectAsState()
     val results by vm.results.collectAsState()
+    val isSearching by vm.isSearching.collectAsState()
     val clusters by vm.clusters.collectAsState()
     val unlocatedCount by vm.unlocatedCount.collectAsState()
     val ctx = LocalContext.current
-    val workInfos by WorkManager.getInstance(ctx)
-        .getWorkInfosForUniqueWorkLiveData("index")
-        .observeAsState()
-    val workState = workInfos?.firstOrNull()?.state ?: WorkInfo.State.CANCELLED
 
-    var filterExpanded by remember { mutableStateOf(false) }
+    var hasSearched by remember { mutableStateOf(false) }
+
+    var showFilterPanel by remember { mutableStateOf(false) }
     var timeRange by remember { mutableStateOf<TimeRange?>(null) }
     var selectedCluster by remember { mutableStateOf<LocationCluster?>(null) }
+
     val filter by remember(timeRange, selectedCluster) {
         derivedStateOf {
             SearchFilter(
@@ -65,56 +92,118 @@ fun MainScreen(vm: MainViewModel) {
         }
     }
 
+    var selectedImage by remember { mutableStateOf<ImageDetail?>(null) }
+
     val permission = if (Build.VERSION.SDK_INT >= 33) {
         Manifest.permission.READ_MEDIA_IMAGES
     } else {
         Manifest.permission.READ_EXTERNAL_STORAGE
     }
-
     val permLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted ->
-            if (granted) vm.startIndex()
-        },
+        onResult = { granted -> if (granted) vm.startIndex() },
     )
 
-    Column(Modifier.fillMaxSize().padding(12.dp)) {
-        Text(text = if (ready) "模型已加载" else "模型未就绪")
-        Spacer(Modifier.height(8.dp))
-        Text(text = "已索引：$count")
-        Spacer(Modifier.height(4.dp))
-        Text(text = "索引状态：${workState.name}")
-        Spacer(Modifier.height(8.dp))
+    val workInfos by WorkManager.getInstance(ctx)
+        .getWorkInfosForUniqueWorkLiveData("index")
+        .observeAsState()
+    val workRunning = workInfos?.firstOrNull()?.let {
+        it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
+    } ?: false
 
-        Row(Modifier.fillMaxWidth()) {
-            Button(onClick = { permLauncher.launch(permission) }) {
-                Text("索引")
-            }
-            Spacer(Modifier.padding(6.dp))
-            Button(onClick = { vm.refreshCount() }) {
-                Text("刷新")
-            }
+    // Empty state
+    if (count == 0 && !workRunning) {
+        EmptyStateView(
+            title = "还没有索引照片",
+            description = "开始索引你的照片，然后用文字描述就能找到它们。所有处理都在本机完成，隐私安全。",
+            actionText = "📸 开始索引",
+            onAction = { permLauncher.launch(permission) },
+        )
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState()),
+    ) {
+        // Header
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
+            Text(
+                text = "PicSearch",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = "用文字找到你的照片",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        OutlinedTextField(
+        // Search bar
+        TextField(
             value = query,
             onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            placeholder = { Text("搜索 \"日落时的海滩\"...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             singleLine = true,
-            label = { Text("输入中文") },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    if (query.isNotBlank()) {
+                        vm.search(query.trim(), filter, topK = 30)
+                        hasSearched = true
+                    }
+                },
+            ),
+            trailingIcon = {
+                if (isSearching) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(4.dp).size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else if (query.isNotEmpty()) {
+                    IconButton(onClick = {
+                        vm.search(query.trim(), filter, topK = 30)
+                        hasSearched = true
+                    }) {
+                        Text("🔍", fontSize = 18.sp)
+                    }
+                }
+            },
+            shape = RoundedCornerShape(12.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedIndicatorColor = Primary,
+                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+            ),
         )
 
-        Spacer(Modifier.height(4.dp))
+        // Active filter tags
+        if (!filter.isEmpty || selectedCluster != null) {
+            ActiveFilterTags(
+                filter = filter,
+                selectedCluster = selectedCluster,
+                onClearTime = { timeRange = null },
+                onClearLocation = { selectedCluster = null },
+                onOpenFilterPanel = { showFilterPanel = !showFilterPanel },
+            )
+        }
 
-        FilterToggleHeader(
-            expanded = filterExpanded,
-            selectedCount = filter.selectedCount,
-            onToggle = { filterExpanded = !filterExpanded },
+        // Filter entry row
+        FilterEntryRow(
+            onTimeClick = { showFilterPanel = !showFilterPanel },
+            onLocationClick = { showFilterPanel = !showFilterPanel },
+            onSceneClick = { showFilterPanel = !showFilterPanel },
         )
 
-        AnimatedVisibility(visible = filterExpanded) {
+        // Expandable filter panel
+        AnimatedVisibility(visible = showFilterPanel) {
             SearchFilterPanel(
                 timeRange = timeRange,
                 onTimeRangeChange = { timeRange = it },
@@ -122,21 +211,90 @@ fun MainScreen(vm: MainViewModel) {
                 onClusterChange = { selectedCluster = it },
                 clusters = clusters,
                 unlocatedCount = unlocatedCount,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
 
         Spacer(Modifier.height(8.dp))
 
-        Button(
-            onClick = { vm.search(query, filter, topK = 10) },
-            enabled = ready,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("搜索")
+        // Search results
+        if (hasSearched && results.isEmpty() && !isSearching) {
+            NoResultsView(query = query)
+        } else if (results.isNotEmpty()) {
+            Text(
+                text = "找到 ${results.size} 张照片",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+            ImageGrid(
+                uris = results,
+                onImageClick = { uri ->
+                    val item = vm.getImageDetail(uri)
+                    selectedImage = item
+                },
+                modifier = Modifier.padding(bottom = 80.dp),
+            )
+        } else if (isSearching) {
+            Column(modifier = Modifier.padding(horizontal = 10.dp)) {
+                repeat(4) {
+                    SkeletonCard(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                }
+            }
         }
 
-        Spacer(Modifier.height(8.dp))
+        // Bottom index button
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            color = Primary,
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .clickable { permLauncher.launch(permission) }
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "📸 索引照片",
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "已索引 $count 张照片",
+                        color = Color.White.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        }
+    }
 
-        ImageGrid(uris = results, modifier = Modifier.fillMaxSize())
+    // Index progress overlay
+    if (workRunning && count < 100) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            IndexProgressView(
+                indexedCount = count,
+                totalCount = null,
+                isQuickPhase = count < 100,
+            )
+        }
+    }
+
+    // Image detail sheet
+    selectedImage?.let { detail ->
+        ImageDetailSheet(
+            detail = detail,
+            onDismiss = { selectedImage = null },
+        )
     }
 }
