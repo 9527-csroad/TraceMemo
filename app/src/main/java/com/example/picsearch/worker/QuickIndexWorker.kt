@@ -85,6 +85,8 @@ class QuickIndexWorker(
                 if (existing.contains(uriStr)) continue
 
                 val feat = extractor.encodeImage(resolver, uri) ?: continue
+                var mag = 0f; for (v in feat) mag += v * v
+                if (mag < 1e-6f) continue
                 val exif = ExifHelper.read(resolver, uri)
 
                 val sceneTags = classifier.classify(feat)

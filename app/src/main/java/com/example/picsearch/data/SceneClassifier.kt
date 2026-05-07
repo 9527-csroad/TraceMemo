@@ -37,6 +37,10 @@ class SceneClassifier(
         if (!::sceneVectors.isInitialized) return emptyList()
         if (imageFeature.isEmpty()) return emptyList()
 
+        var mag = 0f
+        for (v in imageFeature) mag += v * v
+        if (mag < 1e-6f) return emptyList()
+
         val scores = sceneVectors.mapIndexed { index, sceneVec ->
             val sim = cosineSimilarity(imageFeature, sceneVec)
             index to sim
