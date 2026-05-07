@@ -1,5 +1,6 @@
 package com.example.picsearch.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -10,6 +11,7 @@ interface ImageDao {
     data class UriFeature(
         val uri: String,
         val feature: ByteArray,
+        @ColumnInfo(name = "scene_tags") val sceneTags: String? = null,
     )
 
     data class ClusterRow(
@@ -23,12 +25,12 @@ interface ImageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(entity: ImageEntity)
 
-    @Query("SELECT uri, feature FROM images")
+    @Query("SELECT uri, feature, scene_tags FROM images")
     suspend fun listFeatures(): List<UriFeature>
 
     @Query(
         """
-        SELECT uri, feature FROM images
+        SELECT uri, feature, scene_tags FROM images
         WHERE
           (:useTime = 0 OR
             (dateTaken IS NOT NULL AND dateTaken >= :timeStart AND dateTaken <= :timeEnd) OR
@@ -43,6 +45,14 @@ interface ImageDao {
         useTime: Int, timeStart: Long, timeEnd: Long,
         useGeo: Int, latMin: Double, latMax: Double, lonMin: Double, lonMax: Double,
     ): List<UriFeature>
+
+    @Query(
+        """
+        SELECT uri, feature, scene_tags FROM images
+        WHERE scene_tags IS NOT NULL AND scene_tags LIKE '%' || :tag || '%'
+        """
+    )
+    suspend fun listFeaturesBySceneTag(tag: String): List<UriFeature>
 
     @Query(
         """

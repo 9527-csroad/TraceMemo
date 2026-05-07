@@ -1,5 +1,6 @@
 package com.example.picsearch.data.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -14,5 +15,5 @@ data class ImageEntity(
     val width: Int,
     val height: Int,
     val indexedAt: Long,
+    @ColumnInfo(name = "scene_tags") val sceneTags: String? = null,
 )
-

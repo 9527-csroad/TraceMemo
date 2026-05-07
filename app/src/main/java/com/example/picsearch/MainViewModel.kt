@@ -22,9 +22,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
-    data class ImageScore(val uri: String, val score: Float)
+    data class ImageScore(val uri: String, val score: Float, val sceneTags: List<String> = emptyList())
 
-    private val db: AppDatabase = Room.databaseBuilder(app, AppDatabase::class.java, "picsearch.db").build()
+    private val db: AppDatabase = Room.databaseBuilder(app, AppDatabase::class.java, "picsearch.db")
+        .fallbackToDestructiveMigration()
+        .build()
     private val repo = ImageRepository(db.imageDao())
 
     private val clip = NcnnClip(app)
@@ -108,7 +110,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val n = minOf(qv.size, fv.size)
                 for (i in 0 until n) s += qv[i] * fv[i]
                 if (!s.isFinite()) continue
-                scored.add(ImageScore(r.uri, s))
+                val tags = r.sceneTags
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotEmpty() }
+                    ?: emptyList()
+                scored.add(ImageScore(r.uri, s, tags))
             }
             scored.sortByDescending { it.score }
 
