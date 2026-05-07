@@ -34,10 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.picsearch.data.LocationCluster
 import com.example.picsearch.data.TimeRange
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
-import java.util.Locale
 
 private enum class TimePreset(val label: String) {
     WEEK("近一周"), MONTH("近一月"), QUARTER("近三月"),
@@ -73,11 +70,6 @@ private enum class TimePreset(val label: String) {
         }
         CUSTOM -> null
     }
-}
-
-private fun formatTimeRange(r: TimeRange): String {
-    val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    return "${fmt.format(Date(r.startMillis))} ~ ${fmt.format(Date(r.endMillis))}"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

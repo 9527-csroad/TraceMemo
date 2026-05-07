@@ -99,8 +99,8 @@ fun ImageDetailSheet(
             )
 
             InfoGrid(
-                items = listOf(
-                    "拍摄时间" to detail.dateTaken?.let { formatTimestamp(it) } ?: "未知",
+                items = listOf<Pair<String, String>>(
+                    "拍摄时间" to (detail.dateTaken?.let { formatTimestamp(it) } ?: "未知"),
                     "拍摄地点" to formatLocation(detail.latitude, detail.longitude),
                     "尺寸" to "${detail.width} × ${detail.height}",
                     "文件名" to (detail.displayName ?: "未知"),
