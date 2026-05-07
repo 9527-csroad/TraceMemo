@@ -104,12 +104,17 @@ fun MainScreen(vm: MainViewModel) {
         onResult = { granted -> if (granted) vm.startIndex() },
     )
 
-    val workInfos by WorkManager.getInstance(ctx)
-        .getWorkInfosForUniqueWorkLiveData("index")
+    val quickWorkInfos by WorkManager.getInstance(ctx)
+        .getWorkInfosForUniqueWorkLiveData("quick_index")
         .observeAsState()
-    val workRunning = workInfos?.firstOrNull()?.let {
+    val fullWorkInfos by WorkManager.getInstance(ctx)
+        .getWorkInfosForUniqueWorkLiveData("full_index")
+        .observeAsState()
+    val workRunning = (quickWorkInfos?.firstOrNull()?.let {
         it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
-    } ?: false
+    } ?: false) || (fullWorkInfos?.firstOrNull()?.let {
+        it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
+    } ?: false)
 
     // Empty state
     if (count == 0 && !workRunning) {

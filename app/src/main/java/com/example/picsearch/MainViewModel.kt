@@ -15,7 +15,7 @@ import com.example.picsearch.ml.ChineseTokenizer
 import com.example.picsearch.ml.FeatureExtractor
 import com.example.picsearch.ml.NcnnClip
 import com.example.picsearch.util.FloatCodec
-import com.example.picsearch.worker.IndexWorker
+import com.example.picsearch.worker.QuickIndexWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -80,11 +80,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun startIndex() {
         val ctx = getApplication<Application>()
-        WorkManager.getInstance(ctx).enqueueUniqueWork(
-            "index",
-            ExistingWorkPolicy.KEEP,
-            OneTimeWorkRequestBuilder<IndexWorker>().build(),
-        )
+        val workManager = WorkManager.getInstance(ctx)
+        val quickRequest = OneTimeWorkRequestBuilder<QuickIndexWorker>().build()
+        workManager.enqueueUniqueWork("quick_index", ExistingWorkPolicy.KEEP, quickRequest)
     }
 
     fun refreshCount() {
