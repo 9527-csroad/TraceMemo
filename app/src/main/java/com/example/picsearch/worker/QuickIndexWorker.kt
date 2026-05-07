@@ -4,6 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.ContentUris
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.provider.MediaStore
 import androidx.core.app.NotificationCompat
@@ -141,6 +142,6 @@ class QuickIndexWorker(
             .setProgress(total, indexed, false)
             .setOngoing(true)
             .build()
-        return ForegroundInfo(NOTIFICATION_ID, notification)
+        return ForegroundInfo(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
     }
 }
