@@ -24,9 +24,13 @@ data class LocationBounds(
 data class SearchFilter(
     val timeRange: TimeRange? = null,
     val locationBounds: LocationBounds? = null,
+    val sceneTags: List<String> = emptyList(),
 ) {
-    val isEmpty: Boolean get() = timeRange == null && locationBounds == null
-    val selectedCount: Int get() = (if (timeRange != null) 1 else 0) + (if (locationBounds != null) 1 else 0)
+    val isEmpty: Boolean get() = timeRange == null && locationBounds == null && sceneTags.isEmpty()
+    val selectedCount: Int get() =
+        (if (timeRange != null) 1 else 0) +
+        (if (locationBounds != null) 1 else 0) +
+        sceneTags.size
 }
 
 data class LocationCluster(

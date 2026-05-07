@@ -7,6 +7,7 @@ import androidx.room.Room
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.example.picsearch.data.SceneClassifier
 import com.example.picsearch.data.LocationCluster
 import com.example.picsearch.data.SearchFilter
 import com.example.picsearch.data.db.AppDatabase
@@ -54,6 +55,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _workProgress = MutableStateFlow(0)
     val workProgress: StateFlow<Int> = _workProgress
 
+    private lateinit var sceneClassifier: SceneClassifier
+
     data class ImageDetailData(
         val uri: String,
         val displayName: String?,
@@ -72,6 +75,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             // 临时排查：关闭 Vulkan 走纯 CPU 推理，验证文本/图像向量与 PC CPU 路径是否对齐。
             // 验证完若无精度差异，应改回 clip.init(true) 以享受 GPU 加速。
             val ok = clip.init(false)
+            sceneClassifier = SceneClassifier(extractor)
+            sceneClassifier.initialize()
             _ready.value = ok
             _indexedCount.value = repo.count()
             loadClusters()

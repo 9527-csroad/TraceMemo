@@ -80,14 +80,16 @@ fun MainScreen(vm: MainViewModel) {
     var showFilterPanel by remember { mutableStateOf(false) }
     var timeRange by remember { mutableStateOf<TimeRange?>(null) }
     var selectedCluster by remember { mutableStateOf<LocationCluster?>(null) }
+    var selectedScenes by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    val filter by remember(timeRange, selectedCluster) {
+    val filter by remember(timeRange, selectedCluster, selectedScenes) {
         derivedStateOf {
             SearchFilter(
                 timeRange = timeRange,
                 locationBounds = selectedCluster?.let {
                     LocationBounds.fromBucket(it.latBucket, it.lonBucket)
                 },
+                sceneTags = selectedScenes,
             )
         }
     }

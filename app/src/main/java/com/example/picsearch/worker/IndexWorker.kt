@@ -6,6 +6,7 @@ import android.provider.MediaStore
 import androidx.room.Room
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.example.picsearch.data.SceneClassifier
 import com.example.picsearch.data.db.AppDatabase
 import com.example.picsearch.data.db.ImageEntity
 import com.example.picsearch.data.repository.ImageRepository
@@ -28,6 +29,8 @@ class IndexWorker(
         if (!clip.init(false)) return Result.failure()
         val tokenizer = ChineseTokenizer(applicationContext)
         val extractor = FeatureExtractor(clip, tokenizer)
+        val classifier = SceneClassifier(extractor)
+        classifier.initialize()
 
         val resolver = applicationContext.contentResolver
         val existing = repo.listUris().toHashSet()
@@ -64,6 +67,9 @@ class IndexWorker(
                 val feat = extractor.encodeImage(resolver, uri) ?: continue
                 val exif = ExifHelper.read(resolver, uri)
 
+                val sceneTags = classifier.classify(feat)
+                val sceneTagsStr = if (sceneTags.isNotEmpty()) sceneTags.joinToString(",") else null
+
                 val entity = ImageEntity(
                     uri = uriStr,
                     feature = FloatCodec.toBytes(feat),
@@ -74,6 +80,7 @@ class IndexWorker(
                     width = cur.getInt(wIdx),
                     height = cur.getInt(hIdx),
                     indexedAt = System.currentTimeMillis(),
+                    sceneTags = sceneTagsStr,
                 )
                 repo.upsert(entity)
                 existing.add(uriStr)
