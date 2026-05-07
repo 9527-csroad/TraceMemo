@@ -1,0 +1,157 @@
+<h2>整合搜索：文本 + 日期 + 地点</h2>
+<p class="subtitle">将三种搜索维度融合为统一的搜索体验，而不是割裂的过滤器面板</p>
+
+<div class="section">
+  <h3>方案对比</h3>
+  <p class="subtitle">三种整合方案，选择最适合你的</p>
+</div>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 1rem; background: #FAFAFA; min-height: 350px;">
+        <!-- Search bar at top -->
+        <div style="margin-bottom: 0.75rem; padding: 0.6rem 0.8rem; background: white; border-radius: 10px; border: 2px solid #18181B; display: flex; align-items: center; gap: 0.5rem;">
+          <span style="color: #52525B;">🔍</span>
+          <span style="color: #09090B; font-weight: 500;">日落时的海滩</span>
+        </div>
+        <!-- Filter pills row -->
+        <div style="display: flex; gap: 0.4rem; margin-bottom: 1rem;">
+          <div style="padding: 0.3rem 0.6rem; background: #F4F4F5; border-radius: 16px; font-size: 0.75rem; color: #3F3F46; display: flex; align-items: center; gap: 0.3rem;">
+            📅 2024年3月 <span style="color:#A1A1AA;">✕</span>
+          </div>
+          <div style="padding: 0.3rem 0.6rem; background: #F4F4F5; border-radius: 16px; font-size: 0.75rem; color: #3F3F46; display: flex; align-items: center; gap: 0.3rem;">
+            📍 北京 <span style="color:#A1A1AA;">✕</span>
+          </div>
+          <div style="padding: 0.3rem 0.6rem; background: #F4F4F5; border-radius: 16px; font-size: 0.75rem; color: #71717A; border: 1px dashed #D4D4D8;">
+            + 添加筛选
+          </div>
+        </div>
+        <!-- Results -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <div style="aspect-ratio:1; background:#E4E4E7; border-radius:8px;"></div>
+          <div style="aspect-ratio:1; background:#D4D4D8; border-radius:8px;"></div>
+          <div style="aspect-ratio:1; background:#E4E4E7; border-radius:8px;"></div>
+          <div style="aspect-ratio:1; background:#D4D4D8; border-radius:8px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 A: 搜索栏 + 过滤标签</h3>
+      <p>搜索框固定在顶部，激活的筛选条件以可点击的标签形式显示在搜索框下方。点击标签可移除，"+"按钮添加新筛选。类似电商应用的筛选方式。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>当前筛选条件一目了然</li><li>添加/移除筛选非常直观</li><li>符合用户已有心智模型</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>筛选条件多时会占空间</li><li>需要二次点击才能打开选择器</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 1rem; background: #FAFAFA; min-height: 350px;">
+        <!-- Unified smart search bar -->
+        <div style="margin-bottom: 1rem; padding: 0.5rem; background: white; border-radius: 14px; border: 2px solid #18181B;">
+          <!-- Main input -->
+          <div style="padding: 0.4rem 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+            <span style="color: #52525B;">🔍</span>
+            <span style="color: #09090B; font-weight: 500;">日落时的海滩</span>
+          </div>
+          <!-- Inline filter buttons -->
+          <div style="display: flex; gap: 0.3rem; padding: 0.2rem 0.3rem 0.3rem;">
+            <div style="flex:1; padding: 0.25rem 0.5rem; background: #F4F4F5; border-radius: 8px; font-size: 0.7rem; color: #52525B; text-align: center;">
+              📅 2024年3月
+            </div>
+            <div style="flex:1; padding: 0.25rem 0.5rem; background: #F4F4F5; border-radius: 8px; font-size: 0.7rem; color: #52525B; text-align: center;">
+              📍 北京
+            </div>
+            <div style="flex:1; padding: 0.25rem 0.5rem; background: #F4F4F5; border-radius: 8px; font-size: 0.7rem; color: #52525B; text-align: center;">
+              🌅 风景
+            </div>
+          </div>
+        </div>
+        <!-- Filter expand panel (collapsed by default) -->
+        <div style="padding: 0.5rem; background: white; border-radius: 12px; border: 1px solid #E4E4E7; margin-bottom: 1rem;">
+          <p style="font-size: 0.75rem; color: #71717A; margin: 0 0 0.5rem;">筛选选项</p>
+          <div style="display: flex; gap: 0.5rem;">
+            <div style="flex:1; text-align: center; padding: 0.5rem; background: #F9FAFB; border-radius: 8px;">
+              <div style="font-size: 1.2rem;">📅</div>
+              <div style="font-size: 0.7rem; color: #52525B;">时间</div>
+            </div>
+            <div style="flex:1; text-align: center; padding: 0.5rem; background: #F9FAFB; border-radius: 8px;">
+              <div style="font-size: 1.2rem;">📍</div>
+              <div style="font-size: 0.7rem; color: #52525B;">地点</div>
+            </div>
+            <div style="flex:1; text-align: center; padding: 0.5rem; background: #F9FAFB; border-radius: 8px;">
+              <div style="font-size: 1.2rem;">🏷️</div>
+              <div style="font-size: 0.7rem; color: #52525B;">场景</div>
+            </div>
+          </div>
+        </div>
+        <!-- Results -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <div style="aspect-ratio:1; background:#E4E4E7; border-radius:8px;"></div>
+          <div style="aspect-ratio:1; background:#D4D4D8; border-radius:8px;"></div>
+          <div style="aspect-ratio:1; background:#E4E4E7; border-radius:8px;"></div>
+          <div style="aspect-ratio:1; background:#D4D4D8; border-radius:8px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 B: 统一搜索面板 (推荐)</h3>
+      <p>一个大的"智能搜索卡片"，内部整合文本输入 + 已选筛选条件。下方展开时间/地点/场景三个筛选入口。所有筛选条件聚合展示，类似 iOS 天气 App 的卡片式布局。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>视觉整合度最高，一体化体验</li><li>筛选入口始终可见</li><li>适合移动端的单手操作</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>开发成本稍高</li><li>需要自定义组件</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="padding: 1rem; background: #FAFAFA; min-height: 350px;">
+        <!-- Top: natural language with filter hints -->
+        <div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: white; border-radius: 12px; border: 2px solid #18181B;">
+          <span style="color: #52525B;">🔍 </span>
+          <span style="color: #09090B; font-weight: 500;">日落时的海滩</span>
+          <span style="color: #A1A1AA;"> | </span>
+          <span style="color: #52525B; font-weight: 400; cursor: pointer;" onclick="this.style.background='#F4F4F5'">2024年3月 ▾</span>
+          <span style="color: #A1A1AA;"> | </span>
+          <span style="color: #52525B; font-weight: 400; cursor: pointer;" onclick="this.style.background='#F4F4F5'">北京 ▾</span>
+        </div>
+        <!-- Filter row as horizontal scroll -->
+        <div style="margin-bottom: 1rem; display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem;">
+          <div style="min-width: 120px; padding: 0.75rem; background: white; border-radius: 10px; border: 1px solid #E4E4E7; text-align: center;">
+            <div style="font-size: 1.3rem;">📅</div>
+            <div style="font-size: 0.75rem; color: #52525B; margin-top: 0.25rem;">近一周</div>
+            <div style="font-size: 0.65rem; color: #A1A1AA;">2024年3月</div>
+          </div>
+          <div style="min-width: 120px; padding: 0.75rem; background: #F4F4F5; border-radius: 10px; border: 1px solid #18181B; text-align: center;">
+            <div style="font-size: 1.3rem;">📍</div>
+            <div style="font-size: 0.75rem; color: #09090B; font-weight: 500; margin-top: 0.25rem;">北京</div>
+            <div style="font-size: 0.65rem; color: #A1A1AA;">约 116.4°E</div>
+          </div>
+          <div style="min-width: 120px; padding: 0.75rem; background: white; border-radius: 10px; border: 1px solid #E4E4E7; text-align: center;">
+            <div style="font-size: 1.3rem;">🌅</div>
+            <div style="font-size: 0.75rem; color: #52525B; margin-top: 0.25rem;">风景</div>
+            <div style="font-size: 0.65rem; color: #A1A1AA;">CLIP 标签</div>
+          </div>
+        </div>
+        <!-- Results -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+          <div style="aspect-ratio:1; background:#E4E4E7; border-radius:8px;"></div>
+          <div style="aspect-ratio:1; background:#D4D4D8; border-radius:8px;"></div>
+          <div style="aspect-ratio:1; background:#E4E4E7; border-radius:8px;"></div>
+          <div style="aspect-ratio:1; background:#D4D4D8; border-radius:8px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>方案 C: 自然语言融合</h3>
+      <p>搜索框内将文本 + 时间 + 地点用竖线分隔，点击可编辑。下方横向滚动展示筛选卡片，每个卡片有图标、选中值、详细信息。类似 Apple Maps 的搜索卡片风格。</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>优点</h4><ul><li>最接近自然语言搜索的体验</li><li>筛选信息密度高但不拥挤</li><li>差异化最强</li></ul></div>
+        <div class="cons"><h4>缺点</h4><ul><li>交互最复杂，学习成本高</li><li>竖线分隔对部分用户不够直观</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

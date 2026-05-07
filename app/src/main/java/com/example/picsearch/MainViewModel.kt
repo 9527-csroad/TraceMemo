@@ -7,6 +7,8 @@ import androidx.room.Room
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.example.picsearch.data.LocationCluster
+import com.example.picsearch.data.SearchFilter
 import com.example.picsearch.data.db.AppDatabase
 import com.example.picsearch.data.repository.ImageRepository
 import com.example.picsearch.ml.ChineseTokenizer
@@ -38,11 +40,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _results = MutableStateFlow<List<ImageScore>>(emptyList())
     val results: StateFlow<List<ImageScore>> = _results
 
+    private val _clusters = MutableStateFlow<List<LocationCluster>>(emptyList())
+    val clusters: StateFlow<List<LocationCluster>> = _clusters
+
+    private val _unlocatedCount = MutableStateFlow(0)
+    val unlocatedCount: StateFlow<Int> = _unlocatedCount
+
     init {
         viewModelScope.launch(Dispatchers.IO) {
-            val ok = clip.init(true)
+            // 临时排查：关闭 Vulkan 走纯 CPU 推理，验证文本/图像向量与 PC CPU 路径是否对齐。
+            // 验证完若无精度差异，应改回 clip.init(true) 以享受 GPU 加速。
+            val ok = clip.init(false)
             _ready.value = ok
             _indexedCount.value = repo.count()
+            loadClusters()
         }
     }
 
@@ -58,10 +69,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun refreshCount() {
         viewModelScope.launch(Dispatchers.IO) {
             _indexedCount.value = repo.count()
+            loadClusters()
         }
     }
 
-    fun search(text: String, topK: Int = 10) {
+    private suspend fun loadClusters() {
+        _clusters.value = repo.listLocationClusters().map { row ->
+            LocationCluster(
+                latBucket = row.latBucket,
+                lonBucket = row.lonBucket,
+                centerLat = row.centerLat,
+                centerLon = row.centerLon,
+                count = row.count,
+            )
+        }
+        _unlocatedCount.value = repo.countUnlocated()
+    }
+
+    fun search(text: String, filter: SearchFilter = SearchFilter(), topK: Int = 10) {
         viewModelScope.launch(Dispatchers.IO) {
             if (!_ready.value) return@launch
             val q = text.trim()
@@ -74,7 +99,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 _results.value = emptyList()
                 return@launch
             }
-            val rows = repo.listFeatures()
+            val rows = repo.listFeaturesFiltered(filter)
             val scored = ArrayList<ImageScore>(rows.size)
             for (r in rows) {
                 val fv = FloatCodec.fromBytes(r.feature)
@@ -92,4 +117,3 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 }
-

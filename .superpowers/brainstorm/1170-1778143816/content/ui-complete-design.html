@@ -1,0 +1,232 @@
+<h2>PicSearch 完整 UI 设计方案</h2>
+<p class="subtitle">5 个关键屏幕 + 设计系统总览</p>
+
+<div class="section">
+  <div class="label">设计系统</div>
+  <div style="display: flex; gap: 1rem; margin: 0.5rem 0;">
+    <div style="text-align: center;">
+      <div style="width: 50px; height: 50px; background: #18181B; border-radius: 8px;"></div>
+      <span style="font-size: 0.7rem; color: #888;">Primary</span>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 50px; height: 50px; background: #FAFAFA; border-radius: 8px; border: 1px solid #ccc;"></div>
+      <span style="font-size: 0.7rem; color: #888;">Bg</span>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 50px; height: 50px; background: #F4F4F5; border-radius: 8px; border: 1px solid #ccc;"></div>
+      <span style="font-size: 0.7rem; color: #888;">Surface</span>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 50px; height: 50px; background: #27272A; border-radius: 8px;"></div>
+      <span style="font-size: 0.7rem; color: #888;">Secondary</span>
+    </div>
+  </div>
+  <p style="font-size: 0.8rem; color: #71717A;">风格：Exaggerated Minimalism · 字体：Outfit/Work Sans · 参考：Google Photos × Unsplash</p>
+</div>
+
+<div class="mockup">
+  <div class="mockup-header">Screen 1: 首页 / 搜索（无搜索历史时）</div>
+  <div style="padding: 1rem; background: #FAFAFA; min-height: 400px; position: relative;">
+    <!-- Status bar -->
+    <div style="display: flex; justify-content: space-between; padding: 0 0.5rem; margin-bottom: 1.5rem; font-size: 0.65rem; color: #A1A1AA;">
+      <span>9:41</span><span>🔋 WiFi</span>
+    </div>
+    <!-- App branding -->
+    <div style="padding: 0 1rem; margin-bottom: 2rem;">
+      <h1 style="font-size: 1.75rem; font-weight: 700; color: #09090B; margin: 0; letter-spacing: -0.02em;">PicSearch</h1>
+      <p style="color: #71717A; margin: 0.25rem 0 0; font-size: 0.9rem;">用文字找到你的照片</p>
+    </div>
+    <!-- Search bar with integrated filters -->
+    <div style="margin: 0 1rem;">
+      <div style="padding: 0.75rem 1rem; background: white; border-radius: 12px; border: 1px solid #E4E4E7; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="color: #A1A1AA; font-size: 1.1rem;">⌕</span>
+        <span style="color: #A1A1AA; font-size: 0.9rem;">搜索 "日落时的海滩"...</span>
+      </div>
+      <!-- Filter tags appear here when active -->
+      <div style="padding: 0.5rem 0; margin-top: 0.25rem;">
+        <span style="font-size: 0.7rem; color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.05em;">添加筛选条件：</span>
+      </div>
+      <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+        <div style="flex: 1; display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.75rem; background: white; border-radius: 10px; border: 1px solid #E4E4E7;">
+          <span style="font-size: 1rem;">📅</span>
+          <span style="font-size: 0.8rem; color: #52525B;">时间</span>
+        </div>
+        <div style="flex: 1; display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.75rem; background: white; border-radius: 10px; border: 1px solid #E4E4E7;">
+          <span style="font-size: 1rem;">📍</span>
+          <span style="font-size: 0.8rem; color: #52525B;">地点</span>
+        </div>
+        <div style="flex: 1; display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.75rem; background: white; border-radius: 10px; border: 1px solid #E4E4E7;">
+          <span style="font-size: 1rem;">🏷️</span>
+          <span style="font-size: 0.8rem; color: #52525B;">场景</span>
+        </div>
+      </div>
+    </div>
+    <!-- Index button at bottom -->
+    <div style="position: absolute; bottom: 1.5rem; left: 1rem; right: 1rem;">
+      <div style="padding: 0.85rem; background: #18181B; color: white; border-radius: 12px; text-align: center; font-weight: 600; font-size: 0.95rem;">
+        📸 索引照片
+      </div>
+      <p style="text-align: center; font-size: 0.7rem; color: #A1A1AA; margin: 0.5rem 0 0;">已索引 1,234 张照片</p>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 1.5rem;">
+  <div class="mockup-header">Screen 2: 搜索结果（带活跃筛选标签）</div>
+  <div style="padding: 1rem; background: #FAFAFA; min-height: 400px; position: relative;">
+    <!-- Search bar with text + filter tags -->
+    <div style="margin: 0 1rem;">
+      <div style="padding: 0.6rem 0.8rem; background: white; border-radius: 12px; border: 2px solid #18181B; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="color: #52525B;">⌕</span>
+        <span style="color: #09090B; font-weight: 500; font-size: 0.9rem;">日落时的海滩</span>
+      </div>
+      <!-- Active filter tags -->
+      <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem; align-items: center;">
+        <div style="padding: 0.25rem 0.6rem; background: #F4F4F5; border-radius: 16px; font-size: 0.75rem; color: #3F3F46; display: flex; align-items: center; gap: 0.3rem;">
+          📅 2024年3月 <span style="cursor: pointer; color: #A1A1AA;">✕</span>
+        </div>
+        <div style="padding: 0.25rem 0.6rem; background: #F4F4F5; border-radius: 16px; font-size: 0.75rem; color: #3F3F46; display: flex; align-items: center; gap: 0.3rem;">
+          📍 北京 <span style="cursor: pointer; color: #A1A1AA;">✕</span>
+        </div>
+        <div style="padding: 0.25rem 0.6rem; background: white; border-radius: 16px; font-size: 0.75rem; color: #71717A; border: 1px dashed #D4D4D8;">
+          + 筛选
+        </div>
+      </div>
+    </div>
+    <!-- Result count -->
+    <div style="padding: 0.5rem 1rem; font-size: 0.75rem; color: #71717A;">
+      找到 <strong style="color: #09090B;">23</strong> 张照片
+    </div>
+    <!-- Image grid with scene labels -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 0 1rem;">
+      <div style="position: relative;">
+        <div style="aspect-ratio: 1; background: linear-gradient(135deg, #FDE68A, #F97316); border-radius: 10px;"></div>
+        <div style="position: absolute; bottom: 6px; right: 6px; padding: 2px 6px; background: rgba(0,0,0,0.7); border-radius: 6px; font-size: 0.6rem; color: white;">96%</div>
+        <div style="position: absolute; top: 6px; left: 6px; padding: 2px 6px; background: rgba(255,255,255,0.85); border-radius: 6px; font-size: 0.6rem; color: #3F3F46;">🌅 风景</div>
+      </div>
+      <div style="position: relative;">
+        <div style="aspect-ratio: 1; background: linear-gradient(135deg, #BFDBFE, #3B82F6); border-radius: 10px;"></div>
+        <div style="position: absolute; bottom: 6px; right: 6px; padding: 2px 6px; background: rgba(0,0,0,0.7); border-radius: 6px; font-size: 0.6rem; color: white;">93%</div>
+        <div style="position: absolute; top: 6px; left: 6px; padding: 2px 6px; background: rgba(255,255,255,0.85); border-radius: 6px; font-size: 0.6rem; color: #3F3F46;">🌊 海滩</div>
+      </div>
+      <div style="position: relative;">
+        <div style="aspect-ratio: 1; background: linear-gradient(135deg, #D9F99D, #84CC16); border-radius: 10px;"></div>
+        <div style="position: absolute; bottom: 6px; right: 6px; padding: 2px 6px; background: rgba(0,0,0,0.7); border-radius: 6px; font-size: 0.6rem; color: white;">91%</div>
+        <div style="position: absolute; top: 6px; left: 6px; padding: 2px 6px; background: rgba(255,255,255,0.85); border-radius: 6px; font-size: 0.6rem; color: #3F3F46;">🏔️ 自然</div>
+      </div>
+      <div style="position: relative;">
+        <div style="aspect-ratio: 1; background: linear-gradient(135deg, #E9D5FF, #A855F7); border-radius: 10px;"></div>
+        <div style="position: absolute; bottom: 6px; right: 6px; padding: 2px 6px; background: rgba(0,0,0,0.7); border-radius: 6px; font-size: 0.6rem; color: white;">89%</div>
+        <div style="position: absolute; top: 6px; left: 6px; padding: 2px 6px; background: rgba(255,255,255,0.85); border-radius: 6px; font-size: 0.6rem; color: #3F3F46;">🌅 日落</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 1.5rem;">
+  <div class="mockup-header">Screen 3: 索引进度（混合策略）</div>
+  <div style="padding: 1rem; background: #FAFAFA; min-height: 350px; text-align: center;">
+    <div style="margin: 2rem 1rem;">
+      <h2 style="font-size: 1.5rem; color: #09090B; margin: 0 0 0.5rem;">正在索引照片</h2>
+      <p style="color: #71717A; font-size: 0.9rem;">首次加载可能需要几分钟</p>
+    </div>
+    <!-- Progress ring -->
+    <div style="width: 120px; height: 120px; margin: 1rem auto; border-radius: 50%; border: 4px solid #E4E4E7; display: flex; align-items: center; justify-content: center; position: relative;">
+      <div style="text-align: center;">
+        <div style="font-size: 2rem; font-weight: 700; color: #09090B;">128</div>
+        <div style="font-size: 0.75rem; color: #A1A1AA;">/ 2,456</div>
+      </div>
+    </div>
+    <!-- Quick index phase -->
+    <div style="margin: 1rem; padding: 0.75rem; background: #F4F4F5; border-radius: 10px; display: flex; align-items: center; gap: 0.5rem;">
+      <span style="color: #22C55E;">●</span>
+      <div style="text-align: left; flex: 1;">
+        <div style="font-size: 0.8rem; color: #09090B; font-weight: 500;">快速预览阶段</div>
+        <div style="font-size: 0.7rem; color: #71717A;">正在索引 Top 100 张照片...</div>
+      </div>
+    </div>
+    <!-- Full index phase -->
+    <div style="margin: 0.5rem 1rem; padding: 0.75rem; background: white; border-radius: 10px; border: 1px solid #E4E4E7; display: flex; align-items: center; gap: 0.5rem;">
+      <span style="color: #A1A1AA;">○</span>
+      <div style="text-align: left; flex: 1;">
+        <div style="font-size: 0.8rem; color: #71717A;">后台完整索引（可稍后搜索）</div>
+      </div>
+    </div>
+    <!-- Preview images flying in -->
+    <div style="display: flex; gap: 0.3rem; justify-content: center; margin: 1.5rem 0;">
+      <div style="width: 40px; height: 40px; background: #E4E4E7; border-radius: 6px;"></div>
+      <div style="width: 40px; height: 40px; background: #D4D4D8; border-radius: 6px;"></div>
+      <div style="width: 40px; height: 40px; background: #E4E4E7; border-radius: 6px;"></div>
+      <div style="width: 40px; height: 40px; background: #D4D4D8; border-radius: 6px;"></div>
+      <div style="width: 40px; height: 40px; background: #C4C4C4; border-radius: 6px;"></div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 1.5rem;">
+  <div class="mockup-header">Screen 4: 照片详情（元数据 + 场景标签）</div>
+  <div style="padding: 1rem; background: #FAFAFA; min-height: 400px;">
+    <!-- Image preview -->
+    <div style="aspect-ratio: 4/3; background: linear-gradient(135deg, #FDE68A, #F97316); border-radius: 12px; margin-bottom: 1rem;"></div>
+    <!-- Scene tags -->
+    <div style="display: flex; gap: 0.4rem; margin-bottom: 1rem; flex-wrap: wrap;">
+      <span style="padding: 0.3rem 0.7rem; background: #18181B; color: white; border-radius: 16px; font-size: 0.75rem;">🌅 风景</span>
+      <span style="padding: 0.3rem 0.7rem; background: #F4F4F5; color: #3F3F46; border-radius: 16px; font-size: 0.75rem;">🌊 海滩</span>
+    </div>
+    <!-- EXIF metadata -->
+    <div style="background: white; border-radius: 12px; padding: 1rem;">
+      <h3 style="font-size: 0.85rem; font-weight: 600; color: #09090B; margin: 0 0 0.75rem;">照片信息</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <div>
+          <div style="font-size: 0.65rem; color: #A1A1AA; text-transform: uppercase;">拍摄时间</div>
+          <div style="font-size: 0.85rem; color: #3F3F46;">2024-03-15 17:32</div>
+        </div>
+        <div>
+          <div style="font-size: 0.65rem; color: #A1A1AA; text-transform: uppercase;">拍摄地点</div>
+          <div style="font-size: 0.85rem; color: #3F3F46;">北京市朝阳区</div>
+        </div>
+        <div>
+          <div style="font-size: 0.65rem; color: #A1A1AA; text-transform: uppercase;">尺寸</div>
+          <div style="font-size: 0.85rem; color: #3F3F46;">4032 × 3024</div>
+        </div>
+        <div>
+          <div style="font-size: 0.65rem; color: #A1A1AA; text-transform: uppercase;">索引时间</div>
+          <div style="font-size: 0.85rem; color: #3F3F46;">2024-05-07</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mockup" style="margin-top: 1.5rem;">
+  <div class="mockup-header">Screen 5: 首次使用 / 空状态</div>
+  <div style="padding: 1rem; background: #FAFAFA; min-height: 350px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+    <!-- Illustration area -->
+    <div style="width: 100px; height: 100px; background: #F4F4F5; border-radius: 50%; margin: 0 auto 1.5rem; display: flex; align-items: center; justify-content: center; font-size: 2.5rem;">
+      🔍
+    </div>
+    <h2 style="font-size: 1.3rem; color: #09090B; margin: 0 0 0.5rem;">还没有索引照片</h2>
+    <p style="color: #71717A; font-size: 0.9rem; max-width: 280px; margin: 0 0 2rem; line-height: 1.5;">
+      开始索引你的照片，然后用文字描述就能找到它们。所有处理都在本机完成，隐私安全。
+    </p>
+    <!-- Onboarding steps -->
+    <div style="width: 100%; text-align: left; margin-bottom: 2rem;">
+      <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0;">
+        <div style="width: 24px; height: 24px; background: #18181B; color: white; border-radius: 50%; text-align: center; line-height: 24px; font-size: 0.75rem; font-weight: 600;">1</div>
+        <span style="font-size: 0.85rem; color: #3F3F46;">点击底部按钮开始索引</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0;">
+        <div style="width: 24px; height: 24px; background: #18181B; color: white; border-radius: 50%; text-align: center; line-height: 24px; font-size: 0.75rem; font-weight: 600;">2</div>
+        <span style="font-size: 0.85rem; color: #3F3F46;">等待快速预览完成（约 10 秒）</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0;">
+        <div style="width: 24px; height: 24px; background: #18181B; color: white; border-radius: 50%; text-align: center; line-height: 24px; font-size: 0.75rem; font-weight: 600;">3</div>
+        <span style="font-size: 0.85rem; color: #3F3F46;">输入描述，开始搜索</span>
+      </div>
+    </div>
+    <!-- Start button -->
+    <div style="padding: 0.85rem; background: #18181B; color: white; border-radius: 12px; text-align: center; font-weight: 600; font-size: 0.95rem; width: 100%;">
+      📸 开始索引
+    </div>
+  </div>
+</div>

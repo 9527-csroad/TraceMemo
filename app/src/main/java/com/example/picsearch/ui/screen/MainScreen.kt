@@ -4,6 +4,7 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +17,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,7 +29,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.example.picsearch.MainViewModel
+import com.example.picsearch.data.LocationBounds
+import com.example.picsearch.data.LocationCluster
+import com.example.picsearch.data.SearchFilter
+import com.example.picsearch.data.TimeRange
+import com.example.picsearch.ui.component.FilterToggleHeader
 import com.example.picsearch.ui.component.ImageGrid
+import com.example.picsearch.ui.component.SearchFilterPanel
 
 @Composable
 fun MainScreen(vm: MainViewModel) {
@@ -35,11 +43,27 @@ fun MainScreen(vm: MainViewModel) {
     val ready by vm.ready.collectAsState()
     val count by vm.indexedCount.collectAsState()
     val results by vm.results.collectAsState()
+    val clusters by vm.clusters.collectAsState()
+    val unlocatedCount by vm.unlocatedCount.collectAsState()
     val ctx = LocalContext.current
     val workInfos by WorkManager.getInstance(ctx)
         .getWorkInfosForUniqueWorkLiveData("index")
         .observeAsState()
     val workState = workInfos?.firstOrNull()?.state ?: WorkInfo.State.CANCELLED
+
+    var filterExpanded by remember { mutableStateOf(false) }
+    var timeRange by remember { mutableStateOf<TimeRange?>(null) }
+    var selectedCluster by remember { mutableStateOf<LocationCluster?>(null) }
+    val filter by remember(timeRange, selectedCluster) {
+        derivedStateOf {
+            SearchFilter(
+                timeRange = timeRange,
+                locationBounds = selectedCluster?.let {
+                    LocationBounds.fromBucket(it.latBucket, it.lonBucket)
+                },
+            )
+        }
+    }
 
     val permission = if (Build.VERSION.SDK_INT >= 33) {
         Manifest.permission.READ_MEDIA_IMAGES
@@ -82,10 +106,29 @@ fun MainScreen(vm: MainViewModel) {
             label = { Text("输入中文") },
         )
 
+        Spacer(Modifier.height(4.dp))
+
+        FilterToggleHeader(
+            expanded = filterExpanded,
+            selectedCount = filter.selectedCount,
+            onToggle = { filterExpanded = !filterExpanded },
+        )
+
+        AnimatedVisibility(visible = filterExpanded) {
+            SearchFilterPanel(
+                timeRange = timeRange,
+                onTimeRangeChange = { timeRange = it },
+                selectedCluster = selectedCluster,
+                onClusterChange = { selectedCluster = it },
+                clusters = clusters,
+                unlocatedCount = unlocatedCount,
+            )
+        }
+
         Spacer(Modifier.height(8.dp))
 
         Button(
-            onClick = { vm.search(query, topK = 10) },
+            onClick = { vm.search(query, filter, topK = 10) },
             enabled = ready,
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -97,4 +140,3 @@ fun MainScreen(vm: MainViewModel) {
         ImageGrid(uris = results, modifier = Modifier.fillMaxSize())
     }
 }
-

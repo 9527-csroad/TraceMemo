@@ -1,0 +1,69 @@
+<h2>PicSearch 优化方向总览</h2>
+<p class="subtitle">当前项目是 demo 原型，需要从 UI、交互体验、性能三个维度进行优化。以下是三大优化方向的对比，请先了解全貌。</p>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>UI 界面优化</h3>
+      <p>当前界面为 Material 3 基础组件，缺乏视觉层次和品牌感。需要优化：色彩方案、卡片样式、搜索结果展示、空状态设计、过渡动画。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>交互体验优化</h3>
+      <p>模型处理照片速度较慢是核心痛点。需要优化：索引进度反馈、搜索状态指示、加载动画、错误处理、手势操作。</p>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>功能增强优化</h3>
+      <p>获取图像元数据（EXIF 已部分实现）、相似度搜索（点击找相似）、增量索引、更多过滤维度。</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+  <h3>当前原型 vs Queryable (iOS) 差距对比</h3>
+  <p class="subtitle">了解差距有助于确定优化优先级</p>
+
+  <table style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+    <tr style="border-bottom: 1px solid #333;">
+      <th style="text-align: left; padding: 0.5rem;">维度</th>
+      <th style="text-align: left; padding: 0.5rem;">PicSearch (当前)</th>
+      <th style="text-align: left; padding: 0.5rem;">Queryable (iOS)</th>
+    </tr>
+    <tr style="border-bottom: 1px solid #222;">
+      <td style="padding: 0.5rem;">索引反馈</td>
+      <td style="padding: 0.5rem; color: #f87;">❌ 仅有按钮，无进度展示</td>
+      <td style="padding: 0.5rem; color: #7f7;">✅ X/Y 照片 + 实时进度条</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #222;">
+      <td style="padding: 0.5rem;">搜索状态</td>
+      <td style="padding: 0.5rem; color: #f87;">❌ 无加载指示</td>
+      <td style="padding: 0.5rem; color: #7f7;">✅ 搜索动画 + 即时结果</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #222;">
+      <td style="padding: 0.5rem;">以图搜图</td>
+      <td style="padding: 0.5rem; color: #f87;">❌ 未实现</td>
+      <td style="padding: 0.5rem; color: #7f7;">✅ 点击找相似</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #222;">
+      <td style="padding: 0.5rem;">增量索引</td>
+      <td style="padding: 0.5rem; color: #f87;">❌ 全量扫描</td>
+      <td style="padding: 0.5rem; color: #7f7;">✅ 仅索引新照片</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #222;">
+      <td style="padding: 0.5rem;">模型加载状态</td>
+      <td style="padding: 0.5rem; color: #7f7;">✅ 有模型状态指示</td>
+      <td style="padding: 0.5rem; color: #7f7;">✅ 状态机驱动</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #222;">
+      <td style="padding: 0.5rem;">性能优化</td>
+      <td style="padding: 0.5rem; color: #f87;">❌ 暴力全量搜索</td>
+      <td style="padding: 0.5rem; color: #7f7;">✅ GPU 矩阵乘法 + Float16</td>
+    </tr>
+  </table>
+</div>

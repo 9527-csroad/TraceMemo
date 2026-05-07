@@ -1,0 +1,98 @@
+<h2>PicSearch UI 设计方案</h2>
+<p class="subtitle">基于 Exaggerated Minimalism 风格 — Gallery Black + White Space 配色，适合摄影类应用</p>
+
+<div class="section">
+  <h3>设计系统</h3>
+
+  <div class="label">配色方案</div>
+  <div style="display: flex; gap: 1rem; margin: 0.5rem 0 1.5rem;">
+    <div style="text-align: center;">
+      <div style="width: 60px; height: 60px; background: #18181B; border-radius: 8px; border: 1px solid #333;"></div>
+      <span style="font-size: 0.75rem; color: #888;">#18181B<br>Primary</span>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 60px; height: 60px; background: #27272A; border-radius: 8px; border: 1px solid #333;"></div>
+      <span style="font-size: 0.75rem; color: #888;">#27272A<br>Secondary</span>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 60px; height: 60px; background: #FAFAFA; border-radius: 8px; border: 1px solid #ccc;"></div>
+      <span style="font-size: 0.75rem; color: #888;">#FAFAFA<br>Background</span>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 60px; height: 60px; background: #F8FAFC; border-radius: 8px; border: 1px solid #ccc;"></div>
+      <span style="font-size: 0.75rem; color: #888;">#F8FAFC<br>CTA</span>
+    </div>
+    <div style="text-align: center;">
+      <div style="width: 60px; height: 60px; background: #09090B; border-radius: 8px; border: 1px solid #333;"></div>
+      <span style="font-size: 0.75rem; color: #888;">#09090B<br>Text</span>
+    </div>
+  </div>
+
+  <div class="label">字体</div>
+  <p style="margin: 0.5rem 0;">Outfit (标题) / Work Sans (正文) — 几何现代，适合摄影应用</p>
+
+  <div class="label">风格关键词</div>
+  <p>Bold minimalism · Oversized typography · High contrast · Negative space</p>
+</div>
+
+<div class="section">
+  <h3>5 个关键屏幕设计</h3>
+
+  <h3>1. 首页 / 搜索界面</h3>
+  <div class="mockup">
+    <div class="mockup-header">Home / Search Screen</div>
+    <div style="padding: 1rem; background: #FAFAFA; min-height: 300px;">
+      <!-- Status bar -->
+      <div style="display: flex; justify-content: space-between; padding: 0 0.5rem; margin-bottom: 1rem; font-size: 0.7rem; color: #888;">
+        <span>9:41</span><span>🔋</span>
+      </div>
+      <!-- App title -->
+      <div style="padding: 0 1rem; margin-bottom: 2rem;">
+        <h1 style="font-size: 2rem; font-weight: 700; color: #09090B; margin: 0;">PicSearch</h1>
+        <p style="color: #71717A; margin: 0.25rem 0 0;">用文字找到你的照片</p>
+      </div>
+      <!-- Search bar -->
+      <div style="margin: 0 1rem 1.5rem; padding: 0.75rem 1rem; background: white; border-radius: 12px; border: 1px solid #E4E4E7; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="color: #A1A1AA;">🔍</span>
+        <span style="color: #A1A1AA;">搜索 "日落时的海滩"...</span>
+      </div>
+      <!-- Suggested tags -->
+      <div style="padding: 0 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+        <span style="padding: 0.35rem 0.75rem; background: #F4F4F5; border-radius: 20px; font-size: 0.8rem; color: #3F3F46;">🌅 风景</span>
+        <span style="padding: 0.35rem 0.75rem; background: #F4F4F5; border-radius: 20px; font-size: 0.8rem; color: #3F3F46;">👤 人像</span>
+        <span style="padding: 0.35rem 0.75rem; background: #F4F4F5; border-radius: 20px; font-size: 0.8rem; color: #3F3F46;">🍜 美食</span>
+        <span style="padding: 0.35rem 0.75rem; background: #F4F4F5; border-radius: 20px; font-size: 0.8rem; color: #3F3F46;">🏙️ 城市</span>
+      </div>
+      <!-- Recent searches -->
+      <div style="padding: 0 1rem;">
+        <p style="font-size: 0.75rem; color: #A1A1AA; margin: 0 0 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">最近搜索</p>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #F4F4F5;">
+          <span style="color: #52525B;">周末公园拍照</span>
+          <span style="color: #A1A1AA;">✕</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #F4F4F5;">
+          <span style="color: #52525B;">猫咪的照片</span>
+          <span style="color: #A1A1AA;">✕</span>
+        </div>
+      </div>
+      <!-- Bottom: Index button -->
+      <div style="position: absolute; bottom: 2rem; left: 1rem; right: 1rem;">
+        <div style="padding: 0.75rem; background: #18181B; color: white; border-radius: 12px; text-align: center; font-weight: 600;">
+          📸 索引照片 (已索引 1,234 张)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options" data-multiselect>
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>设计方向确认</h3>
+      <p>Exaggerated Minimalism 风格，Gallery Black + White Space 配色，适合摄影应用</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 1rem;">继续查看其他 4 个屏幕的设计方案...</p>

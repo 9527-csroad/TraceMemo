@@ -29,6 +29,16 @@ class TextEncoder(torch.nn.Module):
         super().__init__()
         self.model = model
 
+    def forward(self, text: torch.Tensor, attn_mask: torch.Tensor) -> torch.Tensor:
+        x = self.model.bert(text, attention_mask=attn_mask)[0]
+        return x[:, 0, :] @ self.model.text_projection
+
+
+class TextEncoderSingle(torch.nn.Module):
+    def __init__(self, model: torch.nn.Module):
+        super().__init__()
+        self.model = model
+
     def forward(self, text: torch.Tensor) -> torch.Tensor:
         return self.model.encode_text(text)
 
@@ -57,12 +67,21 @@ def _run(cmd: Sequence[str]) -> None:
 
 
 def _default_ckpt(model_arch: str) -> str:
+    # 权重可能放在脚本同级的 reponame/filename 下，
+    # 也可能放在 Chinese-CLIP/reponame/filename 下（当前项目就是这种布局），
+    # 这里按常见位置依次尝试，避免用户必须显式传 --pytorch-ckpt-path。
     repo_root = Path(__file__).resolve().parent
     reponame, filename = clip_utils._MODELS[model_arch]
-    p = repo_root / reponame / filename
-    if not p.is_file():
-        raise FileNotFoundError(str(p))
-    return str(p)
+    candidates = [
+        repo_root / reponame / filename,
+        repo_root / "Chinese-CLIP" / reponame / filename,
+    ]
+    for p in candidates:
+        if p.is_file():
+            return str(p)
+    raise FileNotFoundError(
+        "weight not found under: " + " | ".join(str(c) for c in candidates)
+    )
 
 
 def _load_model(model_arch: str, ckpt_path: str) -> torch.nn.Module:
@@ -93,24 +112,25 @@ def _export_onnx(
             ImageEncoder(model),
             (dummy_image,),
             out_img,
-            input_names=["image"],
-            output_names=["image_features"],
+            input_names=["in0"],
+            output_names=["out0"],
             export_params=True,
-            do_constant_folding=False,
-            opset_version=opset
+            do_constant_folding=True,
+            opset_version=opset,
         )
 
     if export_text:
         out_txt = f"{out_prefix}.txt.onnx"
-        dummy_text = clip.tokenize([""], context_length=context_length)
+        dummy_text = clip.tokenize([""], context_length=context_length).to(torch.int32)
+        dummy_mask = (dummy_text != 0).float()
         torch.onnx.export(
             TextEncoder(model),
-            (dummy_text,),
+            (dummy_text, dummy_mask),
             out_txt,
-            input_names=["text"],
-            output_names=["text_features"],
+            input_names=["in0", "in1"],
+            output_names=["out0"],
             export_params=True,
-            do_constant_folding=False,
+            do_constant_folding=True,
             opset_version=opset,
         )
 
@@ -199,6 +219,13 @@ def main() -> None:
     p.add_argument("--ncnn-tools-dir", default=None, type=str)
     p.add_argument("--enable-optimize", action="store_true")
     p.add_argument("--ncnn-opt-flag", type=int, default=65536)
+    p.add_argument(
+        "--via",
+        choices=["onnx", "pnnx"],
+        default="onnx",
+        help="conversion route: onnx (torch.onnx.export + onnx2ncnn, default, preserves text accuracy) | pnnx (legacy)",
+    )
+    p.add_argument("--opset", type=int, default=13)
     args = p.parse_args()
 
     if not args.convert_vision and not args.convert_text:
@@ -211,6 +238,10 @@ def main() -> None:
     ncnnoptimize = None
     if args.enable_optimize:
         ncnnoptimize = _find_exe("ncnnoptimize", args.ncnn_tools_dir)
+
+    onnx2ncnn = None
+    if args.via == "onnx":
+        onnx2ncnn = _find_exe("onnx2ncnn", args.ncnn_tools_dir)
 
     archs = _normalize_archs([args.model_arch])
     allowed_archs = {"ViT-B-16", "ViT-L-14", "ViT-L-14-336", "ViT-H-14", "RN50"}
@@ -232,46 +263,65 @@ def main() -> None:
     dim = _embed_dim(model)
     resolution = int(clip_utils._MODEL_INFO[arch]["input_resolution"])
 
+    img_meta = {
+        "model_arch": arch,
+        "encoder": "image",
+        "input_name": "in0",
+        "input_shape": [1, 3, resolution, resolution],
+        "output_name": "out0",
+        "output_shape": [1, dim],
+    }
+    txt_meta = {
+        "model_arch": arch,
+        "encoder": "text",
+        "input_name": "in0",
+        "mask_name": "in1",
+        "seq_length": int(args.context_length),
+        "output_name": "out0",
+        "output_shape": [1, dim],
+        "vocab_file": vocab_path,
+    }
+
+    if args.via == "onnx":
+        onnx_img, onnx_txt = _export_onnx(
+            model,
+            arch,
+            out_prefix,
+            export_vision=args.convert_vision,
+            export_text=args.convert_text,
+            context_length=args.context_length,
+            opset=args.opset,
+        )
+
+        if args.convert_vision and onnx_img:
+            in_param, in_bin = _onnx_to_ncnn(onnx2ncnn, onnx_img, f"{out_prefix}.img")
+            if ncnnoptimize:
+                _optimize_ncnn(ncnnoptimize, in_param, in_bin, f"{out_prefix}.img", args.ncnn_opt_flag)
+            _write_encoder_meta(f"{out_prefix}.img.meta.json", img_meta)
+
+        if args.convert_text and onnx_txt:
+            in_param, in_bin = _onnx_to_ncnn(onnx2ncnn, onnx_txt, f"{out_prefix}.txt")
+            if ncnnoptimize:
+                _optimize_ncnn(ncnnoptimize, in_param, in_bin, f"{out_prefix}.txt", args.ncnn_opt_flag)
+            _write_encoder_meta(f"{out_prefix}.txt.meta.json", txt_meta)
+        return
+
     if args.convert_vision:
-        in_param = None
-        in_bin = None
         pt_path = f"{out_prefix}.img.pnnx.pt"
         dummy_image = torch.randn(1, 3, resolution, resolution, dtype=torch.float32)
         in_param, in_bin = _pnnx_export(ImageEncoder(model).eval(), pt_path, (dummy_image,))
         if ncnnoptimize and in_param and in_bin:
             _optimize_ncnn(ncnnoptimize, in_param, in_bin, f"{out_prefix}.img", args.ncnn_opt_flag)
-        _write_encoder_meta(
-            f"{out_prefix}.img.meta.json",
-            {
-                "model_arch": arch,
-                "encoder": "image",
-                "input_name": "image",
-                "input_shape": [1, 3, resolution, resolution],
-                "output_name": "image_features",
-                "output_shape": [1, dim],
-            },
-        )
+        _write_encoder_meta(f"{out_prefix}.img.meta.json", img_meta)
 
     if args.convert_text:
-        in_param = None
-        in_bin = None
         pt_path = f"{out_prefix}.txt.pnnx.pt"
         dummy_text = clip.tokenize([""], context_length=args.context_length).to(torch.int32)
-        in_param, in_bin = _pnnx_export(TextEncoder(model).eval(), pt_path, (dummy_text,))
+        dummy_mask = (dummy_text != 0).float()
+        in_param, in_bin = _pnnx_export(TextEncoder(model).eval(), pt_path, (dummy_text, dummy_mask))
         if ncnnoptimize and in_param and in_bin:
             _optimize_ncnn(ncnnoptimize, in_param, in_bin, f"{out_prefix}.txt", args.ncnn_opt_flag)
-        _write_encoder_meta(
-            f"{out_prefix}.txt.meta.json",
-            {
-                "model_arch": arch,
-                "encoder": "text",
-                "input_name": "text",
-                "seq_length": int(args.context_length),
-                "output_name": "text_features",
-                "output_shape": [1, dim],
-                "vocab_file": vocab_path,
-            },
-        )
+        _write_encoder_meta(f"{out_prefix}.txt.meta.json", txt_meta)
 
 
 if __name__ == "__main__":
