@@ -72,6 +72,7 @@ fun MainScreen(vm: MainViewModel) {
     val results by vm.results.collectAsState()
     val isSearching by vm.isSearching.collectAsState()
     val clusters by vm.clusters.collectAsState()
+    val sceneLabels by vm.sceneLabels.collectAsState()
     val unlocatedCount by vm.unlocatedCount.collectAsState()
     val ctx = LocalContext.current
 
@@ -81,6 +82,13 @@ fun MainScreen(vm: MainViewModel) {
     var timeRange by remember { mutableStateOf<TimeRange?>(null) }
     var selectedCluster by remember { mutableStateOf<LocationCluster?>(null) }
     var selectedScenes by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    val onSceneToggle: (String) -> Unit = { label ->
+        selectedScenes = if (label in selectedScenes)
+            selectedScenes - label
+        else
+            selectedScenes + label
+    }
 
     val filter by remember(timeRange, selectedCluster, selectedScenes) {
         derivedStateOf {
@@ -96,15 +104,30 @@ fun MainScreen(vm: MainViewModel) {
 
     var selectedImage by remember { mutableStateOf<ImageDetail?>(null) }
 
-    val permission = if (Build.VERSION.SDK_INT >= 33) {
+    // Android 10+ 需要照片 + 位置权限才能读取 EXIF GPS
+    val needLocationPerm = Build.VERSION.SDK_INT >= 29
+    val basePermission = if (Build.VERSION.SDK_INT >= 33) {
         Manifest.permission.READ_MEDIA_IMAGES
     } else {
         Manifest.permission.READ_EXTERNAL_STORAGE
     }
+
     val permLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted -> if (granted) vm.startIndex() },
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { result ->
+            val allGranted = result.values.all { it }
+            if (allGranted) vm.startIndex()
+        },
     )
+
+    fun startIndexWithPermission() {
+        val permissions = if (needLocationPerm) {
+            arrayOf(basePermission, Manifest.permission.ACCESS_MEDIA_LOCATION)
+        } else {
+            arrayOf(basePermission)
+        }
+        permLauncher.launch(permissions)
+    }
 
     val quickWorkInfos by WorkManager.getInstance(ctx)
         .getWorkInfosForUniqueWorkLiveData("quick_index")
@@ -124,7 +147,7 @@ fun MainScreen(vm: MainViewModel) {
             title = "还没有索引照片",
             description = "开始索引你的照片，然后用文字描述就能找到它们。所有处理都在本机完成，隐私安全。",
             actionText = "📸 开始索引",
-            onAction = { permLauncher.launch(permission) },
+            onAction = { startIndexWithPermission() },
         )
         return
     }
@@ -218,6 +241,9 @@ fun MainScreen(vm: MainViewModel) {
                 onClusterChange = { selectedCluster = it },
                 clusters = clusters,
                 unlocatedCount = unlocatedCount,
+                sceneLabels = sceneLabels,
+                selectedScenes = selectedScenes,
+                onSceneToggle = onSceneToggle,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
@@ -260,7 +286,7 @@ fun MainScreen(vm: MainViewModel) {
         ) {
             Box(
                 modifier = Modifier
-                    .clickable { permLauncher.launch(permission) }
+                    .clickable { startIndexWithPermission() }
                     .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) {
