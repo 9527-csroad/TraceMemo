@@ -1,48 +1,47 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本文件为 Claude Code 在此仓库中工作提供指导。
 
-## Project Overview
+## 项目概述
 
-**PicSearch** — Android image search app using Chinese-CLIP (RN50) + NCNN for on-device semantic image retrieval. Users describe what they want to find in Chinese text; the app matches against indexed photo embeddings. All ML inference runs locally — no cloud API.
+**PicSearch** — 基于 Chinese-CLIP (RN50) + NCNN 的 Android 端侧语义图像搜索应用。用户用中文描述想要查找的照片，应用与已索引的照片嵌入做匹配。所有 ML 推理完全在本地运行，无需网络。
 
-- **Package**: `com.example.picsearch`
+- **包名**: `com.example.picsearch`
 - **minSdk**: 26, **targetSdk**: 36, **compileSdk**: 36
 - **Kotlin**: 2.0.21, **Java**: 11
-- **NDK ABIs**: `arm64-v8a`, `armeabi-v7a`
+- **NDK ABI**: `arm64-v8a`, `armeabi-v7a`
 
-## Build Commands
+## 构建命令
 
-All builds must be done from Android Studio or via Gradle wrapper on Windows:
+所有构建通过 Gradle wrapper 在 Windows 上执行：
 
 ```powershell
-# Set JAVA_HOME (required on Windows — point to Android Studio's bundled JBR)
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 
-# Build debug APK
+# 构建 Debug APK
 .\gradlew app:assembleDebug
 
-# Build release APK
+# 构建 Release APK
 .\gradlew app:assembleRelease
 
-# Run tests
+# 运行单元测试
 .\gradlew test
 
-# Run Android instrumented tests (requires device/emulator)
+# 运行插桩测试（需设备/模拟器）
 .\gradlew connectedAndroidTest
 
-# Clean build
+# 清理构建
 .\gradlew clean
 ```
 
-**Important**:
-- On Windows, the Gradle wrapper script is `gradlew.bat`. Running `gradlew` (without `.bat`) or `./gradlew` (Unix style) will fail.
-- `JAVA_HOME` must be set to Android Studio's bundled JDK path. Without it, Gradle exits with "JAVA_HOME is not set".
-- After any change to `app/src/main/cpp/`, rebuild via `.\gradlew app:assembleDebug` (CMake handles it automatically).
+**注意**:
+- Windows 上 Gradle wrapper 是 `gradlew.bat`，运行 `gradlew`（无 `.bat`）或 `./gradlew`（Unix 风格）会失败。
+- 必须设置 `JAVA_HOME` 指向 Android Studio 自带的 JDK。
+- 修改 `app/src/main/cpp/` 后直接 `assembleDebug` 即可，CMake 自动处理。
 
-## Architecture
+## 架构
 
-### MVVM + Repository Pattern
+### MVVM + Repository 模式
 
 ```
 MainActivity → PicSearchTheme → MainScreen(vm) → MainViewModel
@@ -52,111 +51,106 @@ MainActivity → PicSearchTheme → MainScreen(vm) → MainViewModel
                                     NcnnClip   ImageRepository  SceneClassifier
                                     tokenizer                      │
                                     extractor                      ▼
-                                                         pre-computed scene vectors
+                                                         预计算场景向量
 ```
 
-### Key Layers
+### 各层职责
 
-**UI Layer** (`ui/`):
-- `screen/MainScreen.kt` — Single-screen app with search bar, filter entry, results grid, detail sheet
-- `component/` — Reusable Composables: `ImageGrid`, `FilterEntryRow`, `ActiveFilterTags`, `EmptyStateView`, `ImageDetailSheet`, `IndexProgressView`, `SkeletonPlaceholder`
-- `theme/` — Gallery Black配色 (Exaggerated Minimalism): `Color.kt`, `Theme.kt`, `Type.kt`
+**UI 层** (`ui/`):
+- `screen/MainScreen.kt` — 单屏幕应用：搜索栏、筛选入口、结果网格、详情面板
+- `component/` — 可复用组件：`ImageGrid`、`FilterEntryRow`、`ActiveFilterTags`、`EmptyStateView`、`ImageDetailSheet`、`IndexProgressView`、`SkeletonPlaceholder`
+- `theme/` — Gallery Black 配色（Exaggerated Minimalism）：`Color.kt`、`Theme.kt`、`Type.kt`
 
-**ML Layer** (`ml/`):
-- `NcnnClip.kt` — JNI wrapper around NCNN Chinese-CLIP RN50 model. `init(useVulkan)` controls GPU/CPU. Returns 768-dim L2-normalized embeddings.
-- `ChineseTokenizer.kt` — Simple Chinese character → token ID mapper
-- `FeatureExtractor.kt` — Convenience facade: `encodeImage(resolver, uri)` and `encodeText(text)`
+**ML 层** (`ml/`):
+- `NcnnClip.kt` — JNI 封装，`init(useVulkan)` 控制 GPU/CPU，返回 768 维 L2 归一化嵌入
+- `ChineseTokenizer.kt` — 中文字符 → token ID 映射
+- `FeatureExtractor.kt` — 门面类：`encodeImage(resolver, uri)` 和 `encodeText(text)`
 
-**Data Layer** (`data/`):
-- `db/` — Room database (`AppDatabase` v2): `ImageEntity` (uri, feature bytes, dateTaken, lat/lon, sceneTags), `ImageDao` with filtered queries and location clustering
-- `repository/ImageRepository.kt` — Thin DAO wrapper
-- `SearchFilter.kt` — Filter data classes: `TimeRange`, `LocationBounds`, `SearchFilter`, `LocationCluster`
-- `SceneClassifier.kt` — CLIP-based scene classification: 10 preset labels, pre-computed text embeddings, cosine similarity, Top-2 selection (threshold 0.5)
+**数据层** (`data/`):
+- `db/` — Room 数据库 v2：`ImageEntity`（uri, feature BLOB, dateTaken, lat/lon, sceneTags），`ImageDao` 含过滤查询和位置聚类
+- `repository/ImageRepository.kt` — DAO 薄封装
+- `SearchFilter.kt` — 过滤数据类：`TimeRange`、`LocationBounds`、`SearchFilter`、`LocationCluster`
+- `SceneClassifier.kt` — 10 个预设场景标签，预计算文本向量，余弦相似度匹配，Top-2（阈值 0.5）
 
-**Workers** (`worker/`):
-- `QuickIndexWorker.kt` — Indexes Top 100 most recent photos with foreground notification (~10s). Enqueues `IndexWorker` after completion.
-- `IndexWorker.kt` — Background full indexing of all remaining photos.
+**Worker 层** (`worker/`):
+- `QuickIndexWorker.kt` — 前 100 张快速索引，前台通知（~10s），完成后入队 IndexWorker
+- `IndexWorker.kt` — 后台全量索引
 
-**Utils** (`util/`):
-- `BitmapLoader.kt` — Bitmap decoding with sampling
-- `ExifHelper.kt` — EXIF date/location extraction (FileDescriptor + DMS fallback)
-- `ReverseGeocoder.kt` — Offline reverse geocoding: lat/lon → readable address (Chinese cities + world countries)
-- `FloatCodec.kt` — FloatArray ↔ ByteArray serialization (LE)
+**工具类** (`util/`):
+- `BitmapLoader.kt` — 图片解码 + 采样
+- `ExifHelper.kt` — EXIF 日期/位置提取（FileDescriptor + DMS fallback）
+- `ReverseGeocoder.kt` — 离线逆地理编码（lat/lon → 可读地名）
+- `FloatCodec.kt` — FloatArray ↔ ByteArray 序列化（LE）
 
-### Indexing Flow
+### 索引流程
 
-1. User grants photo + location permission → `MainViewModel.startIndex()` enqueues `QuickIndexWorker`
-2. QuickIndexWorker: queries MediaStore with `setRequireOriginal`, extracts GPS via MediaStore LATITUDE/LONGITUDE columns (primary) or EXIF fallback (Android 10+ requires `ACCESS_MEDIA_LOCATION` permission)
-3. After quick indexing completes, enqueues `IndexWorker` for full background indexing
-4. Both workers use `clip.init(false)` (CPU mode) for stable inference
+1. 用户授权照片 + 位置权限 → `MainViewModel.startIndex()` 入队 `QuickIndexWorker`
+2. QuickIndexWorker：MediaStore 查询（`setRequireOriginal`），GPS 优先走 MediaStore LATITUDE/LONGITUDE 列，备选 EXIF fallback
+3. 快速索引完成后入队 `IndexWorker` 做全量后台索引
+4. 两个 Worker 均使用 `clip.init(false)`（CPU 模式）保证推理稳定性
 
-### Search Flow
+### 搜索流程
 
-1. User enters text → `MainViewModel.search(query, filter, topK)`
-2. Text encoded via `extractor.encodeText(query)` → 768-dim query vector
-3. DAO returns filtered image features (by time/location/scene)
-4. Cosine similarity scored on-main thread, sorted descending, topK returned
-5. Scene tags from DB are parsed and attached to each `ImageScore`
-6. Image detail sheet shows address text via `ReverseGeocoder.lookup()` instead of raw lat/lon coordinates
+1. 用户输入文本 → `MainViewModel.search(query, filter, topK)`
+2. 文本经 `extractor.encodeText(query)` 编码为 768 维查询向量
+3. DAO 返回经过滤的图像特征（时间/地点/场景）
+4. 在 IO 线程做余弦相似度打分，排序后取 topK
+5. DB 中的 scene_tags 解析后附加到 `ImageScore`
+6. 图片详情面板通过 `ReverseGeocoder.lookup()` 显示可读地名
 
-### State Management
+### 状态管理
 
-`MainViewModel` exposes these StateFlows:
-- `ready` — CLIP model initialized
-- `indexedCount` — photos in DB
-- `results` — current search results (`List<ImageScore>`)
-- `isSearching` — search in progress
-- `workProgress` — indexing progress (for Task 6 hybrid indexing)
-- `clusters` — location clusters for map display
-- `unlocatedCount` — photos without GPS
+`MainViewModel` 对外暴露的 StateFlow：
+- `ready` — CLIP 模型是否初始化完成
+- `indexedCount` — DB 中照片数量
+- `results` — 当前搜索结果 `List<ImageScore>`
+- `isSearching` — 搜索进行中
+- `workProgress` — 索引进度
+- `clusters` — 位置聚类列表
+- `unlocatedCount` — 无 GPS 的照片数
+- `sceneLabels` — 10 个场景标签 displayName
 
-### Native Code
+## 原生代码
 
-JNI library: `app/src/main/cpp/`
-- `clip_jni.cpp` — JNI bindings for CLIP model inference
-- `CMakeLists.txt` — CMake build config, links NCNN static libraries
+JNI 库位于 `app/src/main/cpp/`：
+- `clip_jni.cpp` — CLIP 模型推理 JNI 绑定
+- `CMakeLists.txt` — CMake 构建配置，链接 NCNN 静态库
 
-Models are loaded from `assets/` at runtime (not committed to repo).
+模型文件从 `assets/` 运行时加载（不提交到 Git）。
 
-## Database
+## 数据库
 
-Room database: `picsearch.db`, version 2. Uses `fallbackToDestructiveMigration()` — any schema change wipes and rebuilds. Safe for development; will need proper migration for production.
+Room 数据库：`picsearch.db`，版本 2，`fallbackToDestructiveMigration()`（当前阶段安全，发布前需正式 Migration）。
 
-Key table: `images` (uri PK, feature BLOB, dateTaken, latitude, longitude, displayName, width, height, indexedAt, scene_tags)
+核心表：`images`（uri PK, feature BLOB, dateTaken, latitude, longitude, displayName, width, height, indexedAt, scene_tags）
 
-## Known Issues
-
-有 3 个已知问题，详见 `.claude/rules/known-issues.md`：
-1. ✅ 索引进度数字不更新（已修复：ViewModel 轮询机制）
-2. ✅ 搜索不到结果（已修复：同轮询机制）
-3. ✅ 图像元数据/GPS 获取失败（已修复：ACCESS_MEDIA_LOCATION + setRequireOriginal + ExifInterface FileDescriptor）
-
-## Task Tracking
+## 任务追踪
 
 所有待实施任务统一维护在 `docs/v2/global-spec.md`（产品 + 开发合并为单一文档）。
 - 完成任务后从文档中删除对应条目
 - 新任务追加到文档末尾
-- 每个任务一个 checkbox，完成后勾掉并删除
 
-## Known Technical Decisions
+## 已知技术决策
 
-- **Vulkan disabled** (`clip.init(false)`) — temporary for accuracy verification against PC CPU path. Re-enable with `clip.init(true)` once verified for GPU acceleration.
-- **No ProGuard** (`isMinifyEnabled = false`) — release builds not minified yet.
-- **Single Activity** — entire app is `MainActivity` + Compose navigation state in `MainScreen`.
-- **Foreground service** — WorkManager's `SystemForegroundService` with `dataSync` type for API 34+ compliance.
-- **Android 10+ GPS** — requires `ACCESS_MEDIA_LOCATION` permission + `MediaStore.setRequireOriginal()` to read EXIF location data. Without both, the system silently strips GPS from MediaStore results.
-- **Offline reverse geocoding** — uses JSON boundary files in `assets/geocoding/` for lat/lon → address conversion. No network or Google Play Services dependency. Chinese cities (district-level) + world countries.
+- **Vulkan 禁用**（`clip.init(false)`）— 临时用 CPU 模式验证推理精度，验证通过后可开启 GPU 加速
+- **无 ProGuard**（`isMinifyEnabled = false`）— 发布前需开启
+- **单 Activity** — 整个应用由 `MainActivity` + Compose 状态导航组成
+- **前台服务** — WorkManager `SystemForegroundService`，`dataSync` 类型（API 34+）
+- **Android 10+ GPS 读取** — 必须同时持有 `ACCESS_MEDIA_LOCATION` 权限 + `MediaStore.setRequireOriginal()`，否则系统静默剥离 GPS 数据
+- **离线逆地理编码** — 使用 `assets/geocoding/` 下的 JSON 边界文件，无需网络或 Google Play Services。覆盖中国城市（区县级）+ 全球国家
+- **NCNN SDK** — 已升级到 20260113 版本，修复 SDPA 精度问题（Android/PC CosSim > 0.99）
 
-## Important Files
+## 重要文件
 
-| File | Purpose |
-|------|---------|
-| `MainViewModel.kt` | Central state management, search logic, CLIP init, ReverseGeocoder init |
-| `ui/screen/MainScreen.kt` | Only screen — search, filters, results, detail sheet, dual permission request |
-| `worker/QuickIndexWorker.kt` | Fast indexing (Top 100) with notification, GPS via MediaStore setRequireOriginal |
-| `worker/IndexWorker.kt` | Full background indexing, same GPS extraction as QuickIndexWorker |
-| `data/SceneClassifier.kt` | 10 preset scene labels, pre-computed vectors |
-| `data/db/ImageDao.kt` | All DB queries including scene-tag filtering |
-| `ml/NcnnClip.kt` | JNI wrapper — entry point to native CLIP model |
-| `util/ReverseGeocoder.kt` | Offline reverse geocoding (lat/lon → address text) |
-| `assets/geocoding/` | JSON boundary files for country and Chinese city matching |
+| 文件 | 用途 |
+|------|------|
+| `MainViewModel.kt` | 核心状态管理、搜索逻辑、CLIP/ReverseGeocoder 初始化 |
+| `ui/screen/MainScreen.kt` | 唯一页面 — 搜索、筛选、结果、详情、双权限请求 |
+| `worker/QuickIndexWorker.kt` | 快速索引（Top 100）+ 前台通知，GPS 提取 |
+| `worker/IndexWorker.kt` | 后台全量索引 |
+| `data/SceneClassifier.kt` | 10 个预设场景标签，预计算向量 |
+| `data/db/ImageDao.kt` | 所有 DB 查询含场景标签过滤 |
+| `ml/NcnnClip.kt` | JNI 入口 — 调用 Native CLIP 模型 |
+| `ml/ChineseTokenizer.kt` | 中文分词（CJK 单字 + WordPiece） |
+| `util/ReverseGeocoder.kt` | 离线逆地理编码 |
+| `util/ExifHelper.kt` | EXIF 读取（FileDescriptor + DMS fallback） |
