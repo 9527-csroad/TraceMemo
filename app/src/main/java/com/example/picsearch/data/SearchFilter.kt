@@ -39,12 +39,13 @@ data class LocationCluster(
     val centerLat: Double,
     val centerLon: Double,
     val count: Int,
+    val readableName: String? = null,
 ) {
     val displayName: String
-        get() {
+        get() = readableName ?: run {
             val latDir = if (centerLat >= 0) "N" else "S"
             val lonDir = if (centerLon >= 0) "E" else "W"
-            return "约 %.1f°%s, %.1f°%s · %d 张".format(
+            "约 %.1f°%s, %.1f°%s · %d 张".format(
                 abs(centerLat), latDir, abs(centerLon), lonDir, count,
             )
         }
