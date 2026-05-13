@@ -150,8 +150,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     return@launch
                 }
                 val rows = repo.listFeaturesFiltered(filter)
-                val scored = ArrayList<ImageScore>(rows.size)
-                for (r in rows) {
+                val filteredRows = if (filter.sceneTags.isEmpty()) rows
+                    else rows.filter { row ->
+                        val tags = row.sceneTags
+                            ?.split(",")
+                            ?.map { it.trim() }
+                            ?.filter { it.isNotEmpty() }
+                            ?: emptyList()
+                        filter.sceneTags.any { tag -> tags.contains(tag) }
+                    }
+                val scored = ArrayList<ImageScore>(filteredRows.size)
+                for (r in filteredRows) {
                     val fv = FloatCodec.fromBytes(r.feature)
                     if (fv.isEmpty()) continue
                     var s = 0f
