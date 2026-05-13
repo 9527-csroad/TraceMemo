@@ -81,6 +81,9 @@ fun SearchFilterPanel(
     onClusterChange: (LocationCluster?) -> Unit,
     clusters: List<LocationCluster>,
     unlocatedCount: Int,
+    sceneLabels: List<String>,
+    selectedScenes: List<String>,
+    onSceneToggle: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var activePreset by remember { mutableStateOf<TimePreset?>(null) }
@@ -181,6 +184,36 @@ fun SearchFilterPanel(
                         TextButton(onClick = { onClusterChange(null) }) {
                             Text("×")
                         }
+                    }
+                }
+            }
+
+            Spacer(Modifier.padding(top = 10.dp))
+            Text(
+                "场景",
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelLarge,
+            )
+            Spacer(Modifier.padding(top = 4.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                sceneLabels.forEach { label ->
+                    FilterChip(
+                        selected = label in selectedScenes,
+                        onClick = { onSceneToggle(label) },
+                        label = { Text(label) },
+                    )
+                }
+                if (selectedScenes.isNotEmpty()) {
+                    TextButton(onClick = {
+                        selectedScenes.forEach { onSceneToggle(it) }
+                    }) {
+                        Text("×")
                     }
                 }
             }
