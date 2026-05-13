@@ -13,9 +13,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build Commands
 
-All builds must be done from Android Studio or via Gradle wrapper:
+All builds must be done from Android Studio or via Gradle wrapper on Windows:
 
-```bash
+```powershell
+# Set JAVA_HOME (required on Windows — point to Android Studio's bundled JBR)
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+
 # Build debug APK
 .\gradlew app:assembleDebug
 
@@ -32,7 +35,10 @@ All builds must be done from Android Studio or via Gradle wrapper:
 .\gradlew clean
 ```
 
-**Important**: The project uses NCNN native libraries. After any change to `app/src/main/cpp/`, rebuild native code via `.\gradlew app:assembleDebug` (CMake handles it automatically).
+**Important**:
+- On Windows, the Gradle wrapper script is `gradlew.bat`. Running `gradlew` (without `.bat`) or `./gradlew` (Unix style) will fail.
+- `JAVA_HOME` must be set to Android Studio's bundled JDK path. Without it, Gradle exits with "JAVA_HOME is not set".
+- After any change to `app/src/main/cpp/`, rebuild via `.\gradlew app:assembleDebug` (CMake handles it automatically).
 
 ## Architecture
 
@@ -73,13 +79,14 @@ MainActivity → PicSearchTheme → MainScreen(vm) → MainViewModel
 
 **Utils** (`util/`):
 - `BitmapLoader.kt` — Bitmap decoding with sampling
-- `ExifHelper.kt` — EXIF date/location extraction
+- `ExifHelper.kt` — EXIF date/location extraction (FileDescriptor + DMS fallback)
+- `ReverseGeocoder.kt` — Offline reverse geocoding: lat/lon → readable address (Chinese cities + world countries)
 - `FloatCodec.kt` — FloatArray ↔ ByteArray serialization (LE)
 
 ### Indexing Flow
 
-1. User grants photo permission → `MainViewModel.startIndex()` enqueues `QuickIndexWorker`
-2. QuickIndexWorker: queries MediaStore (ORDER BY DATE_ADDED DESC), encodes Top 100 images via CLIP, stores in Room with scene tags
+1. User grants photo + location permission → `MainViewModel.startIndex()` enqueues `QuickIndexWorker`
+2. QuickIndexWorker: queries MediaStore with `setRequireOriginal`, extracts GPS via MediaStore LATITUDE/LONGITUDE columns (primary) or EXIF fallback (Android 10+ requires `ACCESS_MEDIA_LOCATION` permission)
 3. After quick indexing completes, enqueues `IndexWorker` for full background indexing
 4. Both workers use `clip.init(false)` (CPU mode) for stable inference
 
@@ -90,6 +97,7 @@ MainActivity → PicSearchTheme → MainScreen(vm) → MainViewModel
 3. DAO returns filtered image features (by time/location/scene)
 4. Cosine similarity scored on-main thread, sorted descending, topK returned
 5. Scene tags from DB are parsed and attached to each `ImageScore`
+6. Image detail sheet shows address text via `ReverseGeocoder.lookup()` instead of raw lat/lon coordinates
 
 ### State Management
 
@@ -116,20 +124,39 @@ Room database: `picsearch.db`, version 2. Uses `fallbackToDestructiveMigration()
 
 Key table: `images` (uri PK, feature BLOB, dateTaken, latitude, longitude, displayName, width, height, indexedAt, scene_tags)
 
+## Known Issues
+
+有 3 个已知问题，详见 `.claude/rules/known-issues.md`：
+1. ✅ 索引进度数字不更新（已修复：ViewModel 轮询机制）
+2. ✅ 搜索不到结果（已修复：同轮询机制）
+3. ✅ 图像元数据/GPS 获取失败（已修复：ACCESS_MEDIA_LOCATION + setRequireOriginal + ExifInterface FileDescriptor）
+
+## Task Tracking
+
+所有待实施任务统一维护在 `docs/v2/global-spec.md`（产品 + 开发合并为单一文档）。
+- 完成任务后从文档中删除对应条目
+- 新任务追加到文档末尾
+- 每个任务一个 checkbox，完成后勾掉并删除
+
 ## Known Technical Decisions
 
 - **Vulkan disabled** (`clip.init(false)`) — temporary for accuracy verification against PC CPU path. Re-enable with `clip.init(true)` once verified for GPU acceleration.
 - **No ProGuard** (`isMinifyEnabled = false`) — release builds not minified yet.
 - **Single Activity** — entire app is `MainActivity` + Compose navigation state in `MainScreen`.
 - **Foreground service** — WorkManager's `SystemForegroundService` with `dataSync` type for API 34+ compliance.
+- **Android 10+ GPS** — requires `ACCESS_MEDIA_LOCATION` permission + `MediaStore.setRequireOriginal()` to read EXIF location data. Without both, the system silently strips GPS from MediaStore results.
+- **Offline reverse geocoding** — uses JSON boundary files in `assets/geocoding/` for lat/lon → address conversion. No network or Google Play Services dependency. Chinese cities (district-level) + world countries.
 
 ## Important Files
 
 | File | Purpose |
 |------|---------|
-| `MainViewModel.kt` | Central state management, search logic, CLIP init |
-| `ui/screen/MainScreen.kt` | Only screen — search, filters, results, detail sheet |
-| `worker/QuickIndexWorker.kt` | Fast indexing (Top 100) with notification |
+| `MainViewModel.kt` | Central state management, search logic, CLIP init, ReverseGeocoder init |
+| `ui/screen/MainScreen.kt` | Only screen — search, filters, results, detail sheet, dual permission request |
+| `worker/QuickIndexWorker.kt` | Fast indexing (Top 100) with notification, GPS via MediaStore setRequireOriginal |
+| `worker/IndexWorker.kt` | Full background indexing, same GPS extraction as QuickIndexWorker |
 | `data/SceneClassifier.kt` | 10 preset scene labels, pre-computed vectors |
 | `data/db/ImageDao.kt` | All DB queries including scene-tag filtering |
 | `ml/NcnnClip.kt` | JNI wrapper — entry point to native CLIP model |
+| `util/ReverseGeocoder.kt` | Offline reverse geocoding (lat/lon → address text) |
+| `assets/geocoding/` | JSON boundary files for country and Chinese city matching |
