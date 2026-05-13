@@ -58,6 +58,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _workProgress = MutableStateFlow(0)
     val workProgress: StateFlow<Int> = _workProgress
 
+    private val _sceneLabels = MutableStateFlow<List<String>>(emptyList())
+    val sceneLabels: StateFlow<List<String>> = _sceneLabels
+
     private lateinit var sceneClassifier: SceneClassifier
 
     data class ImageDetailData(
@@ -85,6 +88,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             sceneClassifier = SceneClassifier(extractor)
             sceneClassifier.initialize()
+            _sceneLabels.value = SceneClassifier.SCENES.map { it.displayName }
             _ready.value = true
             _indexedCount.value = repo.count()
             loadClusters()
