@@ -15,11 +15,14 @@ import com.example.picsearch.data.repository.ImageRepository
 import com.example.picsearch.ml.ChineseTokenizer
 import com.example.picsearch.ml.FeatureExtractor
 import com.example.picsearch.ml.NcnnClip
+import com.example.picsearch.util.ReverseGeocoder
 import com.example.picsearch.util.FloatCodec
 import com.example.picsearch.worker.QuickIndexWorker
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -71,15 +74,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _imageDetails = MutableStateFlow<Map<String, ImageDetailData>>(emptyMap())
 
     init {
+        ReverseGeocoder.init(app)
         viewModelScope.launch(Dispatchers.IO) {
             // 临时排查：关闭 Vulkan 走纯 CPU 推理，验证文本/图像向量与 PC CPU 路径是否对齐。
             // 验证完若无精度差异，应改回 clip.init(true) 以享受 GPU 加速。
             val ok = clip.init(false)
+            if (!ok) {
+                _ready.value = false
+                return@launch
+            }
             sceneClassifier = SceneClassifier(extractor)
             sceneClassifier.initialize()
-            _ready.value = ok
+            _ready.value = true
             _indexedCount.value = repo.count()
             loadClusters()
+
+            // 每 2 秒轮询数据库 count，确保 Worker 运行期间进度数字能实时更新
+            while (isActive) {
+                delay(2000)
+                val newCount = repo.count()
+                if (newCount != _indexedCount.value) {
+                    _indexedCount.value = newCount
+                    loadClusters()
+                }
+            }
         }
     }
 
@@ -87,7 +105,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val ctx = getApplication<Application>()
         val workManager = WorkManager.getInstance(ctx)
         val quickRequest = OneTimeWorkRequestBuilder<QuickIndexWorker>().build()
-        workManager.enqueueUniqueWork("quick_index", ExistingWorkPolicy.KEEP, quickRequest)
+        workManager.enqueueUniqueWork("quick_index", ExistingWorkPolicy.REPLACE, quickRequest)
     }
 
     fun refreshCount() {
@@ -99,12 +117,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun loadClusters() {
         _clusters.value = repo.listLocationClusters().map { row ->
+            val name = ReverseGeocoder.lookup(row.centerLat, row.centerLon)
             LocationCluster(
                 latBucket = row.latBucket,
                 lonBucket = row.lonBucket,
                 centerLat = row.centerLat,
                 centerLon = row.centerLon,
                 count = row.count,
+                readableName = name,
             )
         }
         _unlocatedCount.value = repo.countUnlocated()
@@ -146,16 +166,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val k = topK.coerceAtLeast(1)
                 _results.value = scored.take(k)
 
-                // Cache image details for detail sheet
-                val details = scored.associate { score ->
+                // Cache image details for detail sheet — batch lookup full entity metadata
+                val topUris = scored.take(k).map { it.uri }
+                val entities = repo.listEntitiesByUris(topUris).associateBy { it.uri }
+                val details = scored.take(k).associate { score ->
+                    val entity = entities[score.uri]
                     score.uri to ImageDetailData(
                         uri = score.uri,
-                        displayName = null,
-                        width = 0,
-                        height = 0,
-                        dateTaken = null,
-                        latitude = null,
-                        longitude = null,
+                        displayName = entity?.displayName,
+                        width = entity?.width ?: 0,
+                        height = entity?.height ?: 0,
+                        dateTaken = entity?.dateTaken,
+                        latitude = entity?.latitude,
+                        longitude = entity?.longitude,
                         sceneTags = score.sceneTags,
                     )
                 }
