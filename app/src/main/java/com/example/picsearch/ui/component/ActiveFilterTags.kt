@@ -25,6 +25,7 @@ fun ActiveFilterTags(
     selectedCluster: LocationCluster?,
     onClearTime: () -> Unit,
     onClearLocation: () -> Unit,
+    onClearScene: (String) -> Unit,
     onOpenFilterPanel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -39,6 +40,9 @@ fun ActiveFilterTags(
         }
         selectedCluster?.let { cluster ->
             FilterTag(label = "📍 ${cluster.displayName.take(8)}", onClear = onClearLocation)
+        }
+        filter.sceneTags.forEach { tag ->
+            FilterTag(label = tag, onClear = { onClearScene(tag) })
         }
         Text(
             text = "+ 筛选",

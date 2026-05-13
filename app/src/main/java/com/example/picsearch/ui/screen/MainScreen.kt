@@ -221,6 +221,7 @@ fun MainScreen(vm: MainViewModel) {
                 selectedCluster = selectedCluster,
                 onClearTime = { timeRange = null },
                 onClearLocation = { selectedCluster = null },
+                onClearScene = { tag -> onSceneToggle(tag) },
                 onOpenFilterPanel = { showFilterPanel = !showFilterPanel },
             )
         }
