@@ -159,39 +159,48 @@
 
 ### Prod-7: 下拉刷新
 
-**优先级**: P2 | **状态**: 待实施
+**优先级**: P2 | **状态**: ✅ 已完成
 
-**方案**: Compose `pullRefresh` modifier，下拉触发 `vm.refresh()`。
+**实现**:
+1. `MainScreen` 使用 `PullToRefreshBox` 包裹主内容和空状态页面，下拉触发 `vm.refreshCount()`，`rememberCoroutineScope` + `delay(500)` 确保 spinner 可见
 
 **文件**:
-
 - Modify: `app/src/main/java/com/example/picsearch/ui/screen/MainScreen.kt`
+
+**验证**: `.\gradlew app:compileDebugKotlin --rerun-tasks` 通过。
 
 ---
 
 ### Prod-8: 结果图片长按菜单
 
-**优先级**: P2 | **状态**: 待实施
+**优先级**: P2 | **状态**: ✅ 已完成
 
-**方案**: `Modifier.combinedClickable(onLongClick = ...)` + `DropdownMenu`（分享、查看详情）。
+**实现**:
+1. `ImageGrid` 图片卡片使用 `combinedClickable(onLongClick = ...)` 触发长按
+2. `DropdownMenu` 提供"查看详情"和"分享"两个选项，`Intent.ACTION_SEND` + `EXTRA_STREAM` 实现系统分享
 
 **文件**:
-
 - Modify: `app/src/main/java/com/example/picsearch/ui/component/ImageGrid.kt`
+
+**验证**: `.\gradlew app:compileDebugKotlin --rerun-tasks` 通过。
 
 ---
 
 ### Prod-9: 搜索结果排序选项
 
-**优先级**: P2 | **状态**: 待实施
+**优先级**: P2 | **状态**: ✅ 已完成
 
-**方案**: 支持"相似度优先" / "时间优先"两种排序。
+**实现**:
+1. `SearchSort` 枚举: `SIMILARITY`(相似度) / `DATE_TAKEN`(拍摄时间)
+2. `MainViewModel` 新增 `searchSort: StateFlow<SearchSort>` 和 `setSearchSort()`，`search()` 函数接受 sort 参数并按需排序
+3. `MainScreen` 结果区上方显示排序 chip，点击后自动重新搜索
 
 **文件**:
-
 - Create: `app/src/main/java/com/example/picsearch/data/SearchSort.kt`
 - Modify: `app/src/main/java/com/example/picsearch/MainViewModel.kt`
 - Modify: `app/src/main/java/com/example/picsearch/ui/screen/MainScreen.kt`
+
+**验证**: `.\gradlew app:compileDebugKotlin --rerun-tasks` 通过。
 
 ---
 

@@ -26,8 +26,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -38,6 +40,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -54,6 +57,7 @@ import com.example.picsearch.MainViewModel
 import com.example.picsearch.data.LocationBounds
 import com.example.picsearch.data.LocationCluster
 import com.example.picsearch.data.SearchFilter
+import com.example.picsearch.data.SearchSort
 import com.example.picsearch.data.TimeRange
 import com.example.picsearch.ui.component.LinearIndexProgress
 import com.example.picsearch.ui.component.ActiveFilterTags
@@ -67,7 +71,10 @@ import com.example.picsearch.ui.component.NoResultsView
 import com.example.picsearch.ui.component.SearchFilterPanel
 import com.example.picsearch.ui.component.SkeletonCard
 import com.example.picsearch.ui.theme.Primary
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(vm: MainViewModel) {
     var query by remember { mutableStateOf("") }
@@ -79,9 +86,12 @@ fun MainScreen(vm: MainViewModel) {
     val sceneTagCounts by vm.sceneTagCounts.collectAsState()
     val unlocatedCount by vm.unlocatedCount.collectAsState()
     val fullProgress by vm.fullIndexProgress.collectAsState()
+    val currentSort by vm.searchSort.collectAsState()
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var hasSearched by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
 
     var showFilterPanel by remember { mutableStateOf(false) }
     var timeRange by remember { mutableStateOf<TimeRange?>(null) }
@@ -104,6 +114,13 @@ fun MainScreen(vm: MainViewModel) {
                 },
                 sceneTags = selectedScenes,
             )
+        }
+    }
+
+    fun doSearch(text: String) {
+        if (text.isNotBlank()) {
+            vm.search(text.trim(), filter, topK = 30)
+            hasSearched = true
         }
     }
 
@@ -148,21 +165,45 @@ fun MainScreen(vm: MainViewModel) {
 
     // Empty state
     if (count == 0 && !workRunning) {
-        EmptyStateView(
-            title = "还没有索引照片",
-            description = "开始索引你的照片，然后用文字描述就能找到它们。所有处理都在本机完成，隐私安全。",
-            actionText = "📸 开始索引",
-            onAction = { startIndexWithPermission() },
-        )
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                scope.launch {
+                    isRefreshing = true
+                    vm.refreshCount()
+                    delay(500)
+                    isRefreshing = false
+                }
+            },
+        ) {
+            EmptyStateView(
+                title = "还没有索引照片",
+                description = "开始索引你的照片，然后用文字描述就能找到它们。所有处理都在本机完成，隐私安全。",
+                actionText = "📸 开始索引",
+                onAction = { startIndexWithPermission() },
+            )
+        }
         return
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState()),
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            scope.launch {
+                isRefreshing = true
+                vm.refreshCount()
+                if (hasSearched && query.isNotBlank()) doSearch(query)
+                delay(500)
+                isRefreshing = false
+            }
+        },
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState()),
+        ) {
         // Header
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
             Text(
@@ -188,12 +229,7 @@ fun MainScreen(vm: MainViewModel) {
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(
-                onSearch = {
-                    if (query.isNotBlank()) {
-                        vm.search(query.trim(), filter, topK = 30)
-                        hasSearched = true
-                    }
-                },
+                onSearch = { doSearch(query) },
             ),
             trailingIcon = {
                 if (isSearching) {
@@ -202,10 +238,7 @@ fun MainScreen(vm: MainViewModel) {
                         strokeWidth = 2.dp,
                     )
                 } else if (query.isNotEmpty()) {
-                    IconButton(onClick = {
-                        vm.search(query.trim(), filter, topK = 30)
-                        hasSearched = true
-                    }) {
+                    IconButton(onClick = { doSearch(query) }) {
                         Text("🔍", fontSize = 18.sp)
                     }
                 }
@@ -257,12 +290,47 @@ fun MainScreen(vm: MainViewModel) {
 
         Spacer(Modifier.height(8.dp))
 
+        // Sort selector (shown when results exist)
+        if (results.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "排序",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                SearchSort.entries.forEach { sort ->
+                    Text(
+                        text = sort.label,
+                        modifier = Modifier
+                            .clickable {
+                                vm.setSearchSort(sort)
+                                if (hasSearched && query.isNotBlank()) doSearch(query)
+                            }
+                            .background(
+                                if (sort == currentSort) Primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                shape = MaterialTheme.shapes.small,
+                            )
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        color = if (sort == currentSort) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = if (sort == currentSort) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+
         // Search results
         if (hasSearched && results.isEmpty() && !isSearching) {
             NoResultsView(query = query) { example ->
                 query = example
-                vm.search(example, filter, topK = 30)
-                hasSearched = true
+                doSearch(example)
             }
         } else if (results.isNotEmpty()) {
             Text(
@@ -335,7 +403,8 @@ fun MainScreen(vm: MainViewModel) {
                 }
             }
         }
-    }
+    } // Column end
+    } // PullToRefreshBox end
 
     // Index progress overlay
     if (workRunning) {

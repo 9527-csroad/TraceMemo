@@ -12,6 +12,7 @@ import androidx.work.WorkManager
 import com.example.picsearch.data.SceneClassifier
 import com.example.picsearch.data.LocationCluster
 import com.example.picsearch.data.SearchFilter
+import com.example.picsearch.data.SearchSort
 import com.example.picsearch.data.db.AppDatabase
 import com.example.picsearch.data.db.SceneTagCount
 import com.example.picsearch.data.repository.ImageRepository
@@ -72,6 +73,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _sceneTagCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
     val sceneTagCounts: StateFlow<Map<String, Int>> = _sceneTagCounts
+
+    private val _searchSort = MutableStateFlow(SearchSort.SIMILARITY)
+    val searchSort: StateFlow<SearchSort> = _searchSort
 
     private lateinit var sceneClassifier: SceneClassifier
 
@@ -178,7 +182,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _unlocatedCount.value = repo.countUnlocated()
     }
 
-    fun search(text: String, filter: SearchFilter = SearchFilter(), topK: Int = 10) {
+    fun search(text: String, filter: SearchFilter = SearchFilter(), topK: Int = 10, sort: SearchSort = _searchSort.value) {
         viewModelScope.launch(Dispatchers.IO) {
             _isSearching.value = true
             try {
@@ -218,7 +222,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         ?: emptyList()
                     scored.add(ImageScore(r.uri, s, tags))
                 }
-                scored.sortByDescending { it.score }
+
+                when (sort) {
+                    SearchSort.SIMILARITY -> scored.sortByDescending { it.score }
+                    SearchSort.DATE_TAKEN -> {
+                        val details = repo.listEntitiesByUris(scored.map { it.uri }).associateBy { it.uri }
+                        scored.sortByDescending { details[it.uri]?.dateTaken ?: 0L }
+                    }
+                }
 
                 val k = topK.coerceAtLeast(1)
                 _results.value = scored.take(k)
@@ -244,6 +255,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 _isSearching.value = false
             }
         }
+    }
+
+    fun setSearchSort(sort: SearchSort) {
+        _searchSort.value = sort
     }
 
     fun getImageDetail(uri: String): com.example.picsearch.ui.component.ImageDetail {
