@@ -21,6 +21,8 @@ import com.example.picsearch.ml.FeatureExtractor
 import com.example.picsearch.ml.NcnnClip
 import com.example.picsearch.util.ReverseGeocoder
 import com.example.picsearch.util.FloatCodec
+import com.example.picsearch.util.ExtractedFilter
+import com.example.picsearch.util.NlpFilterExtractor
 import com.example.picsearch.worker.KEY_INDEXED_COUNT
 import com.example.picsearch.worker.KEY_TOTAL_COUNT
 import com.example.picsearch.worker.PREFS_NAME
@@ -77,7 +79,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _searchSort = MutableStateFlow(SearchSort.SIMILARITY)
     val searchSort: StateFlow<SearchSort> = _searchSort
 
+    private val _extractedFilter = MutableStateFlow(ExtractedFilter())
+    val extractedFilter: StateFlow<ExtractedFilter> = _extractedFilter
+
     private lateinit var sceneClassifier: SceneClassifier
+    private lateinit var nlpExtractor: NlpFilterExtractor
 
     data class ImageDetailData(
         val uri: String,
@@ -104,6 +110,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             sceneClassifier = SceneClassifier(extractor)
             sceneClassifier.initialize()
+            nlpExtractor = NlpFilterExtractor(app)
             _sceneLabels.value = SceneClassifier.SCENES.map { it.displayName }
             _ready.value = true
             _indexedCount.value = repo.count()
@@ -174,12 +181,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 latBucket = row.latBucket,
                 lonBucket = row.lonBucket,
                 centerLat = row.centerLat,
-                centerLon = row.centerLon,
+                centerLon = row.lonBucket,
                 count = row.count,
                 readableName = name,
             )
         }
         _unlocatedCount.value = repo.countUnlocated()
+    }
+
+    fun clearExtractedTime() {
+        _extractedFilter.value = _extractedFilter.value.copy(timeRange = null)
+    }
+
+    fun clearExtractedLocation() {
+        _extractedFilter.value = _extractedFilter.value.copy(locationBounds = null, locationName = null)
     }
 
     fun search(text: String, filter: SearchFilter = SearchFilter(), topK: Int = 10, sort: SearchSort = _searchSort.value) {
@@ -192,20 +207,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     _results.value = emptyList()
                     return@launch
                 }
-                val qv = extractor.encodeText(q)
+
+                // NLP extraction
+                val extracted = nlpExtractor.extract(q)
+                _extractedFilter.value = extracted
+
+                // Merge filters: manual takes priority over NLP-extracted
+                val mergedFilter = filter.copy(
+                    timeRange = filter.timeRange ?: extracted.timeRange,
+                    locationBounds = filter.locationBounds ?: extracted.locationBounds,
+                )
+
+                // Use remaining text for CLIP search
+                val queryText = extracted.remainingText.takeIf { it.isNotBlank() } ?: q
+                val qv = extractor.encodeText(queryText)
                 if (qv.isEmpty()) {
                     _results.value = emptyList()
                     return@launch
                 }
-                val rows = repo.listFeaturesFiltered(filter)
-                val filteredRows = if (filter.sceneTags.isEmpty()) rows
+                val rows = repo.listFeaturesFiltered(mergedFilter)
+                val filteredRows = if (mergedFilter.sceneTags.isEmpty()) rows
                     else rows.filter { row ->
                         val tags = row.sceneTags
                             ?.split(",")
                             ?.map { it.trim() }
                             ?.filter { it.isNotEmpty() }
                             ?: emptyList()
-                        filter.sceneTags.any { tag -> tags.contains(tag) }
+                        mergedFilter.sceneTags.any { tag -> tags.contains(tag) }
                     }
                 val scored = ArrayList<ImageScore>(filteredRows.size)
                 for (r in filteredRows) {
