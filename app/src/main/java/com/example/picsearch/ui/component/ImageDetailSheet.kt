@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -78,6 +79,7 @@ fun ImageDetailSheet(
 ) {
     val initialIndex = results.indexOfFirst { it.uri == initialUri }.coerceAtLeast(0)
     val pagerState = rememberPagerState(initialPage = initialIndex) { results.size }
+    val sharedScrollState = remember { ScrollState(0) }
 
     var currentDetail by remember { mutableStateOf(detail) }
     var currentUri by remember { mutableStateOf(initialUri) }
@@ -118,7 +120,7 @@ fun ImageDetailSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(sharedScrollState)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
                 AsyncImage(
