@@ -16,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -55,7 +56,7 @@ fun SkeletonCard(modifier: Modifier = Modifier) {
             .padding(6.dp)
             .background(
                 MaterialTheme.colorScheme.outlineVariant,
-                MaterialTheme.shapes.medium,
+                RoundedCornerShape(16.dp),
             ),
     )
 }
