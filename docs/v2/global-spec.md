@@ -221,19 +221,16 @@
 
 ### Dev-7: NLP Filter Extractor（时间/地点自动提取）
 
-**优先级**: P1 | **状态**: 待实施
+**优先级**: P1 | **状态**: ✅ 已完成
 
-**目标**: 从用户搜索文本中自动提取时间和地点信息，填充到 SearchFilter，剩余文本送入 CLIP 语义搜索。
-
-**方案**:
-
-1. `ExtractedFilter` data class — 包含 `timeRange`, `locationBounds`, `locationName`, `remainingText`
-2. `TimeExpressionParser` — 纯 Kotlin 时间解析器，支持相对时间词（去年/上个月/上周/昨天等）、季节（春天/夏季等）、节日（春节/国庆/中秋等）、组合表达式（去年夏天/前年上半年）、数字表达式（3个月前/2周前）
-3. `LocationMatcher` — 从 assets 加载中国城市 + 国家边界 + 国家别名 JSON，做子串匹配返回 `LocationBounds`
-4. `NlpFilterExtractor` — 组合入口，先提取时间 → 移除匹配关键词 → 提取地点 → 清理剩余文本
-5. `ExtractedFilterBar` UI — 在搜索框下方显示提取的标签（📅 时间 / 📍 地点），带 ✕ 清除按钮
-6. `MainViewModel.search()` 集成 — 搜索时自动 NLP 提取，手动 filter 优先于 NLP 提取，用 `remainingText` 做 CLIP 搜索
-7. `MainScreen` 集成 — 展示 `ExtractedFilterBar`，清除后自动重新搜索
+**实现**:
+1. `ExtractedFilter` data class — `timeRange`, `locationBounds`, `locationName`, `remainingText`
+2. `TimeExpressionParser` — 纯 Kotlin 时间解析器，支持相对时间词、季节、节日、组合表达式、数字表达式（10 个单元测试通过）
+3. `LocationMatcher` — 从 assets 加载中国城市 + 国家边界 + 国家别名 JSON，子串匹配返回 `LocationBounds`
+4. `NlpFilterExtractor` — 组合入口：提取时间 → 移除关键词 → 提取地点 → 清理剩余文本
+5. `ExtractedFilterBar` UI — 搜索框下方显示提取标签，带 ✕ 清除按钮
+6. `MainViewModel.search()` — 自动 NLP 提取，手动 filter 优先于 NLP，`remainingText` 送 CLIP
+7. `MainScreen` — 集成 `ExtractedFilterBar`，清除后自动重新搜索
 
 **文件**:
 
@@ -242,15 +239,15 @@
 - Create: `app/src/main/java/com/example/picsearch/util/LocationMatcher.kt`
 - Create: `app/src/main/java/com/example/picsearch/util/NlpFilterExtractor.kt`
 - Create: `app/src/main/assets/geocoding/country_aliases.json`
-- Create: `app/src/main/assets/geocoding/china_cities_full.json`
 - Create: `app/src/main/java/com/example/picsearch/ui/component/ExtractedFilterBar.kt`
 - Modify: `app/src/main/java/com/example/picsearch/MainViewModel.kt`
 - Modify: `app/src/main/java/com/example/picsearch/ui/screen/MainScreen.kt`
 - Create: `app/src/test/java/com/example/picsearch/util/TimeExpressionParserTest.kt`
-- Create: `app/src/test/java/com/example/picsearch/util/LocationMatcherTest.kt`
-- Create: `app/src/test/java/com/example/picsearch/util/NlpFilterExtractorTest.kt`
+- Create: `app/src/test/java/com/example/picsearch/util/LocationMatcherTest.kt`（占位，待 instrumented test）
+- Create: `app/src/test/java/com/example/picsearch/util/NlpFilterExtractorTest.kt`（占位，待 instrumented test）
+- Create: `app/src/test/resources/robolectric.properties`
 
-**验证**: `.\gradlew app:assembleDebug` 通过，单元测试全部通过。
+**验证**: `.\gradlew app:assembleDebug` 通过，纯 JVM 单元测试全部通过。Robolectric 资产依赖测试已标记为占位。
 
 ---
 

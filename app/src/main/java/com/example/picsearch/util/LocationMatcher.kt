@@ -17,6 +17,7 @@ class LocationMatcher(context: Context) {
 
     private val cityBounds = mutableListOf<Pair<String, LocationBounds>>()
     private val countryBoundsRaw = mutableListOf<Pair<String, LocationBounds>>()
+    private val aliases = mutableMapOf<String, String>()
 
     init {
         loadCities(context)
@@ -69,10 +70,11 @@ class LocationMatcher(context: Context) {
                     lonMin = obj.getDouble("minLon"),
                     lonMax = obj.getDouble("maxLon"),
                 )
-                cityBounds.add(name to bounds)
+                // Add short name first so it matches before the "市" version
                 if (name.endsWith("市")) {
                     cityBounds.add(name.removeSuffix("市") to bounds)
                 }
+                cityBounds.add(name to bounds)
             }
         }
     }
@@ -121,6 +123,4 @@ class LocationMatcher(context: Context) {
             // Aliases file not available yet
         }
     }
-
-    private val aliases = mutableMapOf<String, String>()
 }

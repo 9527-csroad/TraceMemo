@@ -150,7 +150,7 @@ object TimeExpressionParser {
             return relativeDayRange(entry.value)
         }
 
-        parseFestival(text)?.let { return it }
+        parseFestival(text, yearOffset)?.let { return it }
 
         return null
     }
@@ -338,8 +338,8 @@ object TimeExpressionParser {
         return null
     }
 
-    private fun parseFestival(text: String): TimeRange? {
-        val year = Calendar.getInstance().get(Calendar.YEAR)
+    private fun parseFestival(text: String, yearOffset: Int): TimeRange? {
+        val year = Calendar.getInstance().get(Calendar.YEAR) + yearOffset
 
         if ("元旦" in text) {
             val (s, e) = pairOf(year, 1, 1)

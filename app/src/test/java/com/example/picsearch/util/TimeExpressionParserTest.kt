@@ -111,4 +111,18 @@ class TimeExpressionParserTest {
         val result = TimeExpressionParser.parse("今天的照片")
         assertNull(result)
     }
+
+    @Test
+    fun `parse 去年春节 returns Spring Festival of last year`() {
+        val result = TimeExpressionParser.parse("去年春节")
+        assertNotNull(result)
+        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+        val lastYear = currentYear - 1
+        // 2025 Spring Festival is Jan 29, 2026 is Feb 17
+        // So for lastYear in 2020..2030, it should be Jan or Feb
+        val cal = Calendar.getInstance()
+        cal.timeInMillis = result!!.startMillis
+        val year = cal.get(Calendar.YEAR)
+        assertEquals("festival should be for last year ($lastYear)", lastYear, year)
+    }
 }
