@@ -668,14 +668,28 @@ data class ImageDetail(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageDetailSheet(
-    detail: ImageDetail,
     results: List<ImageScore>,
+    initialUri: String,
+    detail: ImageDetail,
     onDismiss: () -> Unit,
-    onNavigate: (ImageScore) -> Unit,
+    onDetailChange: (String) -> ImageDetail,
     modifier: Modifier = Modifier,
 ) {
-    val initialIndex = results.indexOfFirst { it.uri == detail.uri }.coerceAtLeast(0)
+    val initialIndex = results.indexOfFirst { it.uri == initialUri }.coerceAtLeast(0)
     val pagerState = rememberPagerState(initialPage = initialIndex) { results.size }
+
+    // 跟踪当前显示的 detail（滑动切换时更新）
+    var currentDetail by remember { mutableStateOf(detail) }
+    var currentUri by remember { mutableStateOf(initialUri) }
+
+    // 页面切换时更新 detail
+    LaunchedEffect(pagerState.currentPage) {
+        val newUri = results[pagerState.currentPage].uri
+        if (newUri != currentUri) {
+            currentUri = newUri
+            currentDetail = onDetailChange(newUri)
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -700,8 +714,7 @@ fun ImageDetailSheet(
             modifier = modifier,
         ) { pageIndex ->
             val item = results[pageIndex]
-            // 只在当前页显示完整详情，其他页只显示图片和基本标签
-            val showFullDetail = (pageIndex == initialIndex)
+            val showFullDetail = (item.uri == currentUri)
 
             Column(
                 modifier = Modifier
@@ -737,7 +750,7 @@ fun ImageDetailSheet(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
                     )
-                    MetadataList(detail = detail)
+                    MetadataList(detail = currentDetail)
                 }
             }
         }
@@ -840,8 +853,14 @@ private fun formatLocation(lat: Double?, lon: Double?): String {
 }
 ```
 
-**关键变更点说明：**
-- 签名改为接收 `results: List<ImageScore>` + `onNavigate` 回调（滑动切换时通知外部更新 `detail`）
+**签名变更说明：**
+- `results: List<ImageScore>` — 搜索结果列表（用于 HorizontalPager）
+- `initialUri: String` — 初始图片 URI（用于定位 pager 起始页）
+- `detail: ImageDetail` — 当前图片的完整详情
+- `onDetailChange: (String) -> ImageDetail` — 滑动切换时，传入新 URI，返回对应详情
+- 内部用 `LaunchedEffect(pagerState.currentPage)` + `mutableStateOf` 跟踪当前页的 detail，避免 pagerState 重置
+
+**关键功能：**
 - `HorizontalPager` 显示所有搜索结果，当前页显示完整元数据，其他页只显示图片+标签
 - 顶部 dragHandle 显示 "当前页 / 总数"
 - 图片用 `ContentScale.Fit` 保持原始比例
@@ -853,12 +872,11 @@ private fun formatLocation(lat: Double?, lon: Double?): String {
 ```kotlin
 selectedImage?.let { detail ->
     ImageDetailSheet(
-        detail = detail,
         results = results,
+        initialUri = detail.uri,
+        detail = detail,
         onDismiss = { selectedImage = null },
-        onNavigate = { score ->
-            selectedImage = vm.getImageDetail(score.uri)
-        },
+        onDetailChange = { uri -> vm.getImageDetail(uri) },
     )
 }
 ```

@@ -16,12 +16,13 @@ class LocationMatcher(context: Context) {
     )
 
     private val cityBounds = mutableListOf<Pair<String, LocationBounds>>()
-    private val countryBounds = mutableListOf<Pair<String, LocationBounds>>()
+    private val countryBoundsRaw = mutableListOf<Pair<String, LocationBounds>>()
 
     init {
         loadCities(context)
-        loadCountries(context)
+        loadCountriesRaw(context)
         loadAliases(context)
+        resolveAliases()
     }
 
     /**
@@ -37,7 +38,7 @@ class LocationMatcher(context: Context) {
         }
 
         // 再尝试国家匹配
-        for ((name, bounds) in countryBounds) {
+        for ((name, bounds) in countryBoundsRaw) {
             if (text.contains(name)) {
                 return LocationMatch(name, bounds)
             }
@@ -76,7 +77,7 @@ class LocationMatcher(context: Context) {
         }
     }
 
-    private fun loadCountries(context: Context) {
+    private fun loadCountriesRaw(context: Context) {
         context.assets.open("geocoding/country_boundaries.json").use { stream ->
             val text = stream.bufferedReader().readText()
             val array = JSONArray(text)
@@ -90,18 +91,19 @@ class LocationMatcher(context: Context) {
                     lonMin = obj.getDouble("minLon"),
                     lonMax = obj.getDouble("maxLon"),
                 )
-                countryBounds.add(name to bounds)
+                countryBoundsRaw.add(name to bounds)
                 if (nameEn.isNotBlank()) {
-                    countryBounds.add(nameEn to bounds)
+                    countryBoundsRaw.add(nameEn to bounds)
                 }
             }
         }
+    }
 
-        // Also load aliases
+    private fun resolveAliases() {
         for ((alias, canonical) in aliases) {
-            val canonicalBounds = countryBounds.find { it.first == canonical }
+            val canonicalBounds = countryBoundsRaw.find { it.first == canonical }
             if (canonicalBounds != null) {
-                countryBounds.add(alias to canonicalBounds.second)
+                countryBoundsRaw.add(alias to canonicalBounds.second)
             }
         }
     }
