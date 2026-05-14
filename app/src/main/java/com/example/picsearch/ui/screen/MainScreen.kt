@@ -20,24 +20,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -208,238 +206,238 @@ fun MainScreen(vm: MainViewModel) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(rememberScrollState()),
+                .background(MaterialTheme.colorScheme.background),
         ) {
-        // Header
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
-            Text(
-                text = "PicSearch",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = "用文字找到你的照片",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        // Search bar
-        TextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(52.dp)
-                .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp)),
-            placeholder = { Text("搜索 \"日落时的海滩\"...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(
-                onSearch = { doSearch(query) },
-            ),
-            trailingIcon = {
-                if (isSearching) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.padding(4.dp).size(20.dp),
-                        strokeWidth = 2.dp,
-                    )
-                } else if (query.isNotEmpty()) {
-                    IconButton(onClick = { doSearch(query) }) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "搜索",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                }
-            },
-            shape = RoundedCornerShape(12.dp),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-            ),
-        )
-
-        // Extracted NLP filter tags
-        if (extractedFilter.timeRange != null || extractedFilter.locationBounds != null) {
-            ExtractedFilterBar(
-                extracted = extractedFilter,
-                onClearTime = {
-                    vm.clearExtractedTime()
-                    if (hasSearched && query.isNotBlank()) doSearch(query)
-                },
-                onClearLocation = {
-                    vm.clearExtractedLocation()
-                    if (hasSearched && query.isNotBlank()) doSearch(query)
-                },
-            )
-        }
-
-        // Active filter tags
-        if (!filter.isEmpty || selectedCluster != null) {
-            ActiveFilterTags(
-                filter = filter,
-                selectedCluster = selectedCluster,
-                onClearTime = { timeRange = null },
-                onClearLocation = { selectedCluster = null },
-                onClearScene = { tag -> onSceneToggle(tag) },
-                onOpenFilterPanel = { showFilterPanel = !showFilterPanel },
-            )
-        }
-
-        // Filter entry row
-        FilterEntryRow(
-            onTimeClick = { showFilterPanel = !showFilterPanel },
-            onLocationClick = { showFilterPanel = !showFilterPanel },
-            onSceneClick = { showFilterPanel = !showFilterPanel },
-        )
-
-        // Expandable filter panel
-        AnimatedVisibility(visible = showFilterPanel) {
-            SearchFilterPanel(
-                timeRange = timeRange,
-                onTimeRangeChange = { timeRange = it },
-                selectedCluster = selectedCluster,
-                onClusterChange = { selectedCluster = it },
-                clusters = clusters,
-                unlocatedCount = unlocatedCount,
-                sceneLabels = sceneLabels,
-                sceneTagCounts = sceneTagCounts,
-                selectedScenes = selectedScenes,
-                onSceneToggle = onSceneToggle,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        // Sort selector (shown when results exist)
-        if (results.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            // Header
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
                 Text(
-                    text = "排序",
-                    style = MaterialTheme.typography.labelMedium,
+                    text = "PicSearch",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "用文字找到你的照片",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                SearchSort.entries.forEach { sort ->
-                    Text(
-                        text = sort.label,
-                        modifier = Modifier
-                            .clickable {
-                                vm.setSearchSort(sort)
-                                if (hasSearched && query.isNotBlank()) doSearch(query)
-                            }
-                            .background(
-                                if (sort == currentSort) Primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                                shape = MaterialTheme.shapes.small,
+            }
+
+            // Search bar
+            TextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .height(52.dp)
+                    .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp)),
+                placeholder = { Text("搜索 \"日落时的海滩\"...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(
+                    onSearch = { doSearch(query) },
+                ),
+                trailingIcon = {
+                    if (isSearching) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(4.dp).size(20.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else if (query.isNotEmpty()) {
+                        IconButton(onClick = { doSearch(query) }) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "搜索",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
                             )
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                        color = if (sort == currentSort) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (sort == currentSort) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-        }
-
-        // Search results
-        if (hasSearched && results.isEmpty() && !isSearching) {
-            NoResultsView(query = query) { example ->
-                query = example
-                doSearch(example)
-            }
-        } else if (results.isNotEmpty()) {
-            Text(
-                text = "找到 ${results.size} 张照片",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-            ImageGrid(
-                uris = results,
-                onImageClick = { uri ->
-                    val item = vm.getImageDetail(uri)
-                    selectedImage = item
+                        }
+                    }
                 },
-                modifier = Modifier.padding(bottom = 80.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                ),
             )
-        } else if (isSearching) {
-            Column(modifier = Modifier.padding(horizontal = 10.dp)) {
-                repeat(4) {
-                    SkeletonCard(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
-                }
-            }
-        }
 
-        // Bottom index button / progress
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            color = if (fullProgress != null)
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            else
-                Primary,
-            shape = RoundedCornerShape(12.dp),
-        ) {
-            if (fullProgress != null) {
-                val (indexed, total) = fullProgress!!
-                LinearIndexProgress(
-                    indexedCount = indexed,
-                    totalCount = total,
-                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
-                    onCancel = { /* WorkManager handles cancellation */ },
+            // Extracted NLP filter tags
+            if (extractedFilter.timeRange != null || extractedFilter.locationBounds != null) {
+                ExtractedFilterBar(
+                    extracted = extractedFilter,
+                    onClearTime = {
+                        vm.clearExtractedTime()
+                        if (hasSearched && query.isNotBlank()) doSearch(query)
+                    },
+                    onClearLocation = {
+                        vm.clearExtractedLocation()
+                        if (hasSearched && query.isNotBlank()) doSearch(query)
+                    },
                 )
-            } else {
-                Box(
+            }
+
+            // Active filter tags
+            if (!filter.isEmpty || selectedCluster != null) {
+                ActiveFilterTags(
+                    filter = filter,
+                    selectedCluster = selectedCluster,
+                    onClearTime = { timeRange = null },
+                    onClearLocation = { selectedCluster = null },
+                    onClearScene = { tag -> onSceneToggle(tag) },
+                    onOpenFilterPanel = { showFilterPanel = !showFilterPanel },
+                )
+            }
+
+            // Filter entry row
+            FilterEntryRow(
+                onTimeClick = { showFilterPanel = !showFilterPanel },
+                onLocationClick = { showFilterPanel = !showFilterPanel },
+                onSceneClick = { showFilterPanel = !showFilterPanel },
+            )
+
+            // Expandable filter panel
+            AnimatedVisibility(visible = showFilterPanel) {
+                SearchFilterPanel(
+                    timeRange = timeRange,
+                    onTimeRangeChange = { timeRange = it },
+                    selectedCluster = selectedCluster,
+                    onClusterChange = { selectedCluster = it },
+                    clusters = clusters,
+                    unlocatedCount = unlocatedCount,
+                    sceneLabels = sceneLabels,
+                    sceneTagCounts = sceneTagCounts,
+                    selectedScenes = selectedScenes,
+                    onSceneToggle = onSceneToggle,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Sort selector (shown when results exist)
+            if (results.isNotEmpty()) {
+                Row(
                     modifier = Modifier
-                        .combinedClickable(
-                            onClick = { startIndexWithPermission() },
-                            onLongClick = {
-                                Toast.makeText(ctx, "长按触发全量重建索引", Toast.LENGTH_SHORT).show()
-                                vm.startFullRebuild()
-                            },
-                        )
-                        .padding(vertical = 14.dp),
-                    contentAlignment = Alignment.Center,
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Outlined.AddPhotoAlternate,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp),
-                        )
-                        Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "排序",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    SearchSort.entries.forEach { sort ->
                         Text(
-                            text = "索引照片",
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = "已索引 $count 张照片",
-                            color = Color.White.copy(alpha = 0.7f),
+                            text = sort.label,
+                            modifier = Modifier
+                                .clickable {
+                                    vm.setSearchSort(sort)
+                                    if (hasSearched && query.isNotBlank()) doSearch(query)
+                                }
+                                .background(
+                                    if (sort == currentSort) Primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                                    shape = MaterialTheme.shapes.small,
+                                )
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                            color = if (sort == currentSort) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
+                            fontWeight = if (sort == currentSort) FontWeight.SemiBold else FontWeight.Normal,
                         )
                     }
                 }
+                Spacer(Modifier.height(8.dp))
             }
-        }
-    } // Column end
+
+            // Search results area — takes remaining space, independent scroll
+            Column(modifier = Modifier.weight(1f)) {
+                if (hasSearched && results.isEmpty() && !isSearching) {
+                    NoResultsView(query = query) { example ->
+                        query = example
+                        doSearch(example)
+                    }
+                } else if (results.isNotEmpty()) {
+                    Text(
+                        text = "找到 ${results.size} 张照片",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                    ImageGrid(
+                        uris = results,
+                        onImageClick = { uri ->
+                            val item = vm.getImageDetail(uri)
+                            selectedImage = item
+                        },
+                    )
+                } else if (isSearching) {
+                    Column(modifier = Modifier.padding(horizontal = 10.dp)) {
+                        repeat(4) {
+                            SkeletonCard(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                        }
+                    }
+                }
+            }
+
+            // Bottom index button / progress
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                color = if (fullProgress != null)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                else
+                    Primary,
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                if (fullProgress != null) {
+                    val (indexed, total) = fullProgress!!
+                    LinearIndexProgress(
+                        indexedCount = indexed,
+                        totalCount = total,
+                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
+                        onCancel = { /* WorkManager handles cancellation */ },
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .combinedClickable(
+                                onClick = { startIndexWithPermission() },
+                                onLongClick = {
+                                    Toast.makeText(ctx, "长按触发全量重建索引", Toast.LENGTH_SHORT).show()
+                                    vm.startFullRebuild()
+                                },
+                            )
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Outlined.AddPhotoAlternate,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp),
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "索引照片",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = "已索引 $count 张照片",
+                                color = Color.White.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                    }
+                }
+            }
+        } // Column end
     } // PullToRefreshBox end
 
     // Index progress overlay
