@@ -67,6 +67,7 @@ import com.example.picsearch.data.TimeRange
 import com.example.picsearch.ui.component.LinearIndexProgress
 import com.example.picsearch.ui.component.ActiveFilterTags
 import com.example.picsearch.ui.component.EmptyStateView
+import com.example.picsearch.ui.component.ExtractedFilterBar
 import com.example.picsearch.ui.component.FilterEntryRow
 import com.example.picsearch.ui.component.ImageDetail
 import com.example.picsearch.ui.component.ImageDetailSheet
@@ -92,6 +93,7 @@ fun MainScreen(vm: MainViewModel) {
     val unlocatedCount by vm.unlocatedCount.collectAsState()
     val fullProgress by vm.fullIndexProgress.collectAsState()
     val currentSort by vm.searchSort.collectAsState()
+    val extractedFilter by vm.extractedFilter.collectAsState()
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -263,6 +265,21 @@ fun MainScreen(vm: MainViewModel) {
                 unfocusedIndicatorColor = Color.Transparent,
             ),
         )
+
+        // Extracted NLP filter tags
+        if (extractedFilter.timeRange != null || extractedFilter.locationBounds != null) {
+            ExtractedFilterBar(
+                extracted = extractedFilter,
+                onClearTime = {
+                    vm.clearExtractedTime()
+                    if (hasSearched && query.isNotBlank()) doSearch(query)
+                },
+                onClearLocation = {
+                    vm.clearExtractedLocation()
+                    if (hasSearched && query.isNotBlank()) doSearch(query)
+                },
+            )
+        }
 
         // Active filter tags
         if (!filter.isEmpty || selectedCluster != null) {
@@ -446,8 +463,11 @@ fun MainScreen(vm: MainViewModel) {
     // Image detail sheet
     selectedImage?.let { detail ->
         ImageDetailSheet(
+            results = results,
+            initialUri = detail.uri,
             detail = detail,
             onDismiss = { selectedImage = null },
+            onDetailChange = { uri -> vm.getImageDetail(uri) },
         )
     }
 }
