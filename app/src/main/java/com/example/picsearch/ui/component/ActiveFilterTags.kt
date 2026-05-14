@@ -36,10 +36,10 @@ fun ActiveFilterTags(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         filter.timeRange?.let { range ->
-            FilterTag(label = "📅 ${formatTimeRange(range)}", onClear = onClearTime)
+            FilterTag(label = formatTimeRange(range), onClear = onClearTime)
         }
         selectedCluster?.let { cluster ->
-            FilterTag(label = "📍 ${cluster.displayName.take(8)}", onClear = onClearLocation)
+            FilterTag(label = cluster.displayName.take(8), onClear = onClearLocation)
         }
         filter.sceneTags.forEach { tag ->
             FilterTag(label = tag, onClear = { onClearScene(tag) })
