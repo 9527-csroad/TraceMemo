@@ -13,6 +13,7 @@ import com.example.picsearch.data.SceneClassifier
 import com.example.picsearch.data.LocationCluster
 import com.example.picsearch.data.SearchFilter
 import com.example.picsearch.data.db.AppDatabase
+import com.example.picsearch.data.db.SceneTagCount
 import com.example.picsearch.data.repository.ImageRepository
 import com.example.picsearch.ml.ChineseTokenizer
 import com.example.picsearch.ml.FeatureExtractor
@@ -69,6 +70,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _sceneLabels = MutableStateFlow<List<String>>(emptyList())
     val sceneLabels: StateFlow<List<String>> = _sceneLabels
 
+    private val _sceneTagCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val sceneTagCounts: StateFlow<Map<String, Int>> = _sceneTagCounts
+
     private lateinit var sceneClassifier: SceneClassifier
 
     data class ImageDetailData(
@@ -103,12 +107,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
             // 每 2 秒轮询数据库 count + SharedPreferences 全量索引进度
             val prefs = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            var lastSceneCountVersion = -1
             while (isActive) {
                 delay(2000)
                 val newCount = repo.count()
                 if (newCount != _indexedCount.value) {
                     _indexedCount.value = newCount
                     loadClusters()
+                    // Reload scene tag counts when DB changes
+                    val sceneCounts = mutableMapOf<String, Int>()
+                    repo.countBySceneTags().forEach { row ->
+                        row.sceneTags.split(",").filter { it.isNotEmpty() }.forEach { tag ->
+                            sceneCounts[tag] = sceneCounts.getOrDefault(tag.trim(), 0) + row.cnt
+                        }
+                    }
+                    _sceneTagCounts.value = sceneCounts
+                    lastSceneCountVersion = newCount
                 }
 
                 // Read full index progress from SharedPreferences

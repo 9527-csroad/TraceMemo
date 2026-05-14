@@ -3,6 +3,7 @@ package com.example.picsearch.data.repository
 import com.example.picsearch.data.SearchFilter
 import com.example.picsearch.data.db.ImageDao
 import com.example.picsearch.data.db.ImageEntity
+import com.example.picsearch.data.db.SceneTagCount
 
 class ImageRepository(private val dao: ImageDao) {
     suspend fun upsert(entity: ImageEntity) = dao.upsert(entity)
@@ -36,4 +37,6 @@ class ImageRepository(private val dao: ImageDao) {
     suspend fun listEntitiesByUris(uris: List<String>): List<ImageEntity> = dao.listEntitiesByUris(uris)
 
     suspend fun deleteByUris(uris: List<String>) = dao.deleteByUris(uris)
+
+    suspend fun countBySceneTags(): List<SceneTagCount> = dao.countBySceneTags()
 }

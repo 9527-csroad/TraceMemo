@@ -122,35 +122,38 @@
 
 ### Prod-5: 搜索示例引导
 
-**优先级**: P1 | **状态**: 待实施
+**优先级**: P1 | **状态**: ✅ 已完成
 
-**问题**: 新用户不知道如何描述照片。
-
-**方案**: 无结果页增加 3-5 个可点击示例查询 chip："日落时的海滩"、"猫咪的照片"、"和朋友聚餐"、"去年夏天的旅行"、"风景照片"。
+**实现**:
+1. `NoResultsView` 新增 `onExampleClick: (String) -> Unit` 回调参数，底部显示 5 个可点击示例查询 chip
+2. `MainScreen` 点击示例 chip 自动填入查询词并触发搜索
+3. `ExampleQueryChips` 使用 `FlowRow` 自适应居中布局
 
 **文件**:
-
 - Modify: `app/src/main/java/com/example/picsearch/ui/component/EmptyStateView.kt`
+- Modify: `app/src/main/java/com/example/picsearch/ui/screen/MainScreen.kt`
+
+**验证**: `.\gradlew app:compileDebugKotlin --rerun-tasks` 通过。
 
 ---
 
 ### Prod-6: 场景标签显示照片数量
 
-**优先级**: P1 | **状态**: 待实施
+**优先级**: P1 | **状态**: ✅ 已完成
 
-**问题**: 筛选面板中场景标签不显示照片数量。
-
-**方案**:
-
-1. `ImageDao` 新增聚合查询 `countBySceneTag()`
-2. `MainViewModel` 新增 `sceneTagCounts: StateFlow<Map<String, Int>>`
-3. `SearchFilterPanel` FilterChip label 改为 `"🌅 风景 (156)"`
+**实现**:
+1. `ImageDao` 新增 `countBySceneTags()` 聚合查询，返回 `SceneTagCount(sceneTags, cnt)`
+2. `MainViewModel` 轮询循环中 DB count 变化时重新加载场景计数，暴露 `sceneTagCounts: StateFlow<Map<String, Int>>`
+3. `SearchFilterPanel` 新增 `sceneTagCounts` 参数，FilterChip label 显示 `"标签名 (数量)"`，数量为 0 时不显示括号
 
 **文件**:
-
 - Modify: `app/src/main/java/com/example/picsearch/data/db/ImageDao.kt`
+- Modify: `app/src/main/java/com/example/picsearch/data/repository/ImageRepository.kt`
 - Modify: `app/src/main/java/com/example/picsearch/MainViewModel.kt`
 - Modify: `app/src/main/java/com/example/picsearch/ui/component/SearchFilterPanel.kt`
+- Modify: `app/src/main/java/com/example/picsearch/ui/screen/MainScreen.kt`
+
+**验证**: `.\gradlew app:compileDebugKotlin --rerun-tasks` 通过。
 
 ---
 

@@ -82,6 +82,7 @@ fun SearchFilterPanel(
     clusters: List<LocationCluster>,
     unlocatedCount: Int,
     sceneLabels: List<String>,
+    sceneTagCounts: Map<String, Int>,
     selectedScenes: List<String>,
     onSceneToggle: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -203,10 +204,11 @@ fun SearchFilterPanel(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 sceneLabels.forEach { label ->
+                    val count = sceneTagCounts[label] ?: 0
                     FilterChip(
                         selected = label in selectedScenes,
                         onClick = { onSceneToggle(label) },
-                        label = { Text(label) },
+                        label = { Text(if (count > 0) "$label ($count)" else label) },
                     )
                 }
                 if (selectedScenes.isNotEmpty()) {

@@ -76,6 +76,7 @@ fun MainScreen(vm: MainViewModel) {
     val isSearching by vm.isSearching.collectAsState()
     val clusters by vm.clusters.collectAsState()
     val sceneLabels by vm.sceneLabels.collectAsState()
+    val sceneTagCounts by vm.sceneTagCounts.collectAsState()
     val unlocatedCount by vm.unlocatedCount.collectAsState()
     val fullProgress by vm.fullIndexProgress.collectAsState()
     val ctx = LocalContext.current
@@ -247,6 +248,7 @@ fun MainScreen(vm: MainViewModel) {
                 clusters = clusters,
                 unlocatedCount = unlocatedCount,
                 sceneLabels = sceneLabels,
+                sceneTagCounts = sceneTagCounts,
                 selectedScenes = selectedScenes,
                 onSceneToggle = onSceneToggle,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -257,7 +259,11 @@ fun MainScreen(vm: MainViewModel) {
 
         // Search results
         if (hasSearched && results.isEmpty() && !isSearching) {
-            NoResultsView(query = query)
+            NoResultsView(query = query) { example ->
+                query = example
+                vm.search(example, filter, topK = 30)
+                hasSearched = true
+            }
         } else if (results.isNotEmpty()) {
             Text(
                 text = "找到 ${results.size} 张照片",

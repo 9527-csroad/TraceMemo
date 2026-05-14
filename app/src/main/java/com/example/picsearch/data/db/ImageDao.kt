@@ -73,4 +73,12 @@ interface ImageDao {
 
     @Query("DELETE FROM images WHERE uri IN (:uris)")
     suspend fun deleteByUris(uris: List<String>)
+
+    @Query("SELECT scene_tags, COUNT(*) as cnt FROM images WHERE scene_tags IS NOT NULL AND scene_tags != '' GROUP BY scene_tags")
+    suspend fun countBySceneTags(): List<SceneTagCount>
 }
+
+data class SceneTagCount(
+    @ColumnInfo(name = "scene_tags") val sceneTags: String,
+    val cnt: Int,
+)
