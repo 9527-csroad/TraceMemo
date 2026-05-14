@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,7 +51,12 @@ fun EmptyStateView(
             color = MaterialTheme.colorScheme.outlineVariant,
         ) {
             Box(contentAlignment = Alignment.Center) {
-                Text(text = "🔍", fontSize = 36.sp)
+                Icon(
+                    imageVector = Icons.Outlined.PhotoCamera,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(40.dp),
+                )
             }
         }
         Spacer(Modifier.height(24.dp))
