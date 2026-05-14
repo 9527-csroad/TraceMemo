@@ -18,11 +18,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ImageAspectRatio
-import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +48,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.picsearch.MainViewModel.ImageScore
+import com.example.picsearch.ui.theme.BorderColor
+import com.example.picsearch.ui.theme.SurfaceWhite
 import com.example.picsearch.util.ReverseGeocoder
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -131,9 +133,9 @@ fun ImageDetailSheet(
                         .clip(RoundedCornerShape(12.dp)),
                 )
 
-                Divider(
+                HorizontalDivider(
                     modifier = Modifier.padding(vertical = 12.dp),
-                    color = Color(0xFFE8E4DF),
+                    color = BorderColor,
                 )
 
                 if (item.sceneTags.isNotEmpty()) {
@@ -182,27 +184,27 @@ private fun MetadataList(detail: ImageDetail) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.outlineVariant)
+            .background(SurfaceWhite)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         MetadataItem(
-            icon = androidx.compose.material.icons.Icons.Default.AccessTime,
+            icon = Icons.Filled.AccessTime,
             label = "拍摄时间",
             value = detail.dateTaken?.let { formatTimestamp(it) } ?: "未知",
         )
         MetadataItem(
-            icon = androidx.compose.material.icons.Icons.Default.Place,
+            icon = Icons.Filled.Place,
             label = "拍摄地点",
             value = formatLocation(detail.latitude, detail.longitude),
         )
         MetadataItem(
-            icon = androidx.compose.material.icons.Icons.Default.ImageAspectRatio,
+            icon = Icons.Filled.ImageAspectRatio,
             label = "尺寸",
             value = "${detail.width} × ${detail.height}",
         )
         MetadataItem(
-            icon = androidx.compose.material.icons.Icons.Default.InsertDriveFile,
+            icon = Icons.AutoMirrored.Filled.InsertDriveFile,
             label = "文件名",
             value = detail.displayName ?: "未知",
         )

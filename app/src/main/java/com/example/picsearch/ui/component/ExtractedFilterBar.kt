@@ -30,11 +30,11 @@ fun ExtractedFilterBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         extracted.timeRange?.let {
-            FilterTag(label = "📅 ${formatTimeRange(it)}", onClear = onClearTime)
+            FilterTag(label = formatTimeRange(it), onClear = onClearTime)
         }
         extracted.locationBounds?.let {
             val name = extracted.locationName ?: "已选地点"
-            FilterTag(label = "📍 $name", onClear = onClearLocation)
+            FilterTag(label = name, onClear = onClearLocation)
         }
     }
 }
