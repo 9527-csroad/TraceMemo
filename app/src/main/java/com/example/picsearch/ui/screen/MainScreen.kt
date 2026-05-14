@@ -2,11 +2,13 @@ package com.example.picsearch.ui.screen
 
 import android.Manifest
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +55,7 @@ import com.example.picsearch.data.LocationBounds
 import com.example.picsearch.data.LocationCluster
 import com.example.picsearch.data.SearchFilter
 import com.example.picsearch.data.TimeRange
+import com.example.picsearch.ui.component.LinearIndexProgress
 import com.example.picsearch.ui.component.ActiveFilterTags
 import com.example.picsearch.ui.component.EmptyStateView
 import com.example.picsearch.ui.component.FilterEntryRow
@@ -74,6 +77,7 @@ fun MainScreen(vm: MainViewModel) {
     val clusters by vm.clusters.collectAsState()
     val sceneLabels by vm.sceneLabels.collectAsState()
     val unlocatedCount by vm.unlocatedCount.collectAsState()
+    val fullProgress by vm.fullIndexProgress.collectAsState()
     val ctx = LocalContext.current
 
     var hasSearched by remember { mutableStateOf(false) }
@@ -277,39 +281,60 @@ fun MainScreen(vm: MainViewModel) {
             }
         }
 
-        // Bottom index button
+        // Bottom index button / progress
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            color = Primary,
+            color = if (fullProgress != null)
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            else
+                Primary,
             shape = RoundedCornerShape(12.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .clickable { startIndexWithPermission() }
-                    .padding(vertical = 14.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "📸 索引照片",
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "已索引 $count 张照片",
-                        color = Color.White.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+            if (fullProgress != null) {
+                val (indexed, total) = fullProgress!!
+                LinearIndexProgress(
+                    indexedCount = indexed,
+                    totalCount = total,
+                    modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
+                    onCancel = { /* WorkManager handles cancellation */ },
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .combinedClickable(
+                            onClick = { startIndexWithPermission() },
+                            onLongClick = {
+                                Toast.makeText(ctx, "长按触发全量重建索引", Toast.LENGTH_SHORT).show()
+                                vm.startFullRebuild()
+                            },
+                        )
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "📸 索引照片",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "已索引 $count 张照片",
+                            color = Color.White.copy(alpha = 0.7f),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
                 }
             }
         }
     }
 
     // Index progress overlay
-    if (workRunning && count < 100) {
+    if (workRunning) {
+        val (overlayIndexed, overlayTotal) = fullProgress ?: (count to null)
+        val isQuickPhase = fullProgress == null && count < 100
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -317,9 +342,9 @@ fun MainScreen(vm: MainViewModel) {
             contentAlignment = Alignment.Center,
         ) {
             IndexProgressView(
-                indexedCount = count,
-                totalCount = null,
-                isQuickPhase = count < 100,
+                indexedCount = overlayIndexed,
+                totalCount = overlayTotal,
+                isQuickPhase = isQuickPhase,
             )
         }
     }

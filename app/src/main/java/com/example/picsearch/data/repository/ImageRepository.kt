@@ -32,4 +32,8 @@ class ImageRepository(private val dao: ImageDao) {
     suspend fun listUris(): List<String> = dao.listUris()
 
     suspend fun count(): Int = dao.count()
+
+    suspend fun listEntitiesByUris(uris: List<String>): List<ImageEntity> = dao.listEntitiesByUris(uris)
+
+    suspend fun deleteByUris(uris: List<String>) = dao.deleteByUris(uris)
 }

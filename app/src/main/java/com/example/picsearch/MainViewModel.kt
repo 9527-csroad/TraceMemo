@@ -1,5 +1,7 @@
 package com.example.picsearch
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,6 +19,9 @@ import com.example.picsearch.ml.FeatureExtractor
 import com.example.picsearch.ml.NcnnClip
 import com.example.picsearch.util.ReverseGeocoder
 import com.example.picsearch.util.FloatCodec
+import com.example.picsearch.worker.KEY_INDEXED_COUNT
+import com.example.picsearch.worker.KEY_TOTAL_COUNT
+import com.example.picsearch.worker.PREFS_NAME
 import com.example.picsearch.worker.QuickIndexWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -58,6 +63,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _workProgress = MutableStateFlow(0)
     val workProgress: StateFlow<Int> = _workProgress
 
+    private val _fullIndexProgress = MutableStateFlow<Pair<Int, Int>?>(null)
+    val fullIndexProgress: StateFlow<Pair<Int, Int>?> = _fullIndexProgress
+
     private val _sceneLabels = MutableStateFlow<List<String>>(emptyList())
     val sceneLabels: StateFlow<List<String>> = _sceneLabels
 
@@ -93,13 +101,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _indexedCount.value = repo.count()
             loadClusters()
 
-            // 每 2 秒轮询数据库 count，确保 Worker 运行期间进度数字能实时更新
+            // 每 2 秒轮询数据库 count + SharedPreferences 全量索引进度
+            val prefs = app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             while (isActive) {
                 delay(2000)
                 val newCount = repo.count()
                 if (newCount != _indexedCount.value) {
                     _indexedCount.value = newCount
                     loadClusters()
+                }
+
+                // Read full index progress from SharedPreferences
+                val indexed = prefs.getInt(KEY_INDEXED_COUNT, -1)
+                val total = prefs.getInt(KEY_TOTAL_COUNT, -1)
+                if (indexed >= 0 && total > 0) {
+                    _fullIndexProgress.value = indexed to total
+                } else {
+                    _fullIndexProgress.value = null
                 }
             }
         }
@@ -110,6 +128,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val workManager = WorkManager.getInstance(ctx)
         val quickRequest = OneTimeWorkRequestBuilder<QuickIndexWorker>().build()
         workManager.enqueueUniqueWork("quick_index", ExistingWorkPolicy.REPLACE, quickRequest)
+    }
+
+    fun startFullRebuild() {
+        // Clear the last index timestamp to force full scan
+        val ctx = getApplication<Application>()
+        ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(QuickIndexWorker.KEY_LAST_INDEX_TIMESTAMP, 0L)
+            .putInt(KEY_INDEXED_COUNT, 0)
+            .putInt(KEY_TOTAL_COUNT, 0)
+            .apply()
+        startIndex()
     }
 
     fun refreshCount() {

@@ -21,6 +21,7 @@
 **优先级**: P1 | **状态**: ✅ 已完成
 
 删除内容：
+
 1. `ImageDao.kt` — `listFeaturesBySceneTag(tag)`，场景筛选已走 Kotlin post-filter
 2. `ImageGrid.kt` — `ImageCard()` private 函数 + 3 个 LazyVerticalGrid 相关 import
 
@@ -52,35 +53,37 @@
 
 ### Prod-2: 全量索引进度可视化
 
-**优先级**: P0 | **状态**: 待实施
+**优先级**: P0 | **状态**: ✅ 已完成
 
-**问题**: 索引进度覆盖层只在 `count < 100` 时显示，全量索引阶段用户看不到进度。
+**实现**:
 
-**方案**:
-
-1. `IndexWorker` 定期写入 SharedPreferences: `{indexedCount, totalCount}`
-2. `MainViewModel` 新增 `fullIndexProgress: StateFlow<Pair<Int, Int>?>` 轮询
-3. 底部索引按钮区域改为进度条样式
+1. `IndexWorker` 统计 MediaStore 总数，每索引 10 张写入 SharedPreferences `{indexedCount, totalCount}`，完成后写入最终值
+2. `MainViewModel` 新增 `fullIndexProgress: StateFlow<Pair<Int, Int>?>`，2 秒轮询读取 SharedPreferences
+3. 底部索引按钮在 `fullProgress != null` 时切换为 `LinearIndexProgress` 进度条样式（含百分比），overlay 也使用真实总数
+4. `totalCount` 为 0 或 SharedPreferences 无数据时自动回退为 null（不显示进度条）
 
 **文件**:
 
 - Modify: `app/src/main/java/com/example/picsearch/worker/IndexWorker.kt`
 - Modify: `app/src/main/java/com/example/picsearch/MainViewModel.kt`
 - Modify: `app/src/main/java/com/example/picsearch/ui/screen/MainScreen.kt`
+- Create: `app/src/main/java/com/example/picsearch/ui/component/LinearIndexProgress.kt`
+
+**验证**: `.\gradlew app:compileDebugKotlin --rerun-tasks` 通过。
 
 ---
 
 ### Prod-3: 增量索引（含删除同步）
 
-**优先级**: P0 | **状态**: 待实施
+**优先级**: P0 | **状态**: ✅ 已完成
 
-**问题**: 每次点击"索引照片"都全量扫描 MediaStore，已索引的照片被跳过但查询仍遍历全部。
+**实现**:
 
-**方案**:
-
-1. 记录 `lastIndexTimestamp`，Worker 只扫描 `DATE_ADDED > lastIndexTimestamp`
-2. 删除检测：对比 DB URI 集合与 MediaStore 当前 URI，移除已删除记录
-3. 保留长按触发"全量重建"用于异常恢复
+1. `QuickIndexWorker` 读取 `lastIndexTimestamp`，MediaStore 查询加 `DATE_ADDED > ?` 过滤；完成后保存当前时间戳。首次索引（timestamp=0）走全量扫描
+2. 删除检测：收集 MediaStore 全部 URI 集合，对比 DB 中已有 URI，`deleteByUris` 批量移除已删除记录
+3. `IndexWorker` 同样使用 `lastIndexTimestamp` 做增量扫描，也做删除检测作为安全网
+4. `MainViewModel.startFullRebuild()` 清除 timestamp + progress 后重新触发索引，MainScreen 底部索引按钮长按触发
+5. `ImageDao` 新增 `deleteByUris()` 方法，`ImageRepository` 透传
 
 **文件**:
 
@@ -88,10 +91,14 @@
 - Modify: `app/src/main/java/com/example/picsearch/worker/IndexWorker.kt`
 - Modify: `app/src/main/java/com/example/picsearch/data/db/ImageDao.kt`
 - Modify: `app/src/main/java/com/example/picsearch/data/repository/ImageRepository.kt`
+- Modify: `app/src/main/java/com/example/picsearch/MainViewModel.kt`
+- Modify: `app/src/main/java/com/example/picsearch/ui/screen/MainScreen.kt`
+
+**验证**: `.\gradlew app:compileDebugKotlin --rerun-tasks` 通过。
 
 ---
 
-### Prod-4: 最近搜索记录
+### Prod-4: 最近搜索记录（跳过不执行）
 
 **优先级**: P1 | **状态**: 待实施
 
@@ -185,7 +192,7 @@
 
 ---
 
-### Prod-10: Google Play 上架准备
+### Prod-10: Google Play 上架准备（不做）
 
 **优先级**: P2 | **状态**: 待实施
 

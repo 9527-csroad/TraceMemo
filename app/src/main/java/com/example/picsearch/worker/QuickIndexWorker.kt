@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.provider.MediaStore
+import android.content.SharedPreferences
 import androidx.core.app.NotificationCompat
 import androidx.room.Room
 import androidx.work.CoroutineWorker
@@ -35,6 +36,7 @@ class QuickIndexWorker(
         const val QUICK_LIMIT = 100
         const val WORK_NAME_QUICK = "quick_index"
         const val WORK_NAME_FULL = "full_index"
+        const val KEY_LAST_INDEX_TIMESTAMP = "last_index_timestamp"
     }
 
     @Suppress("DEPRECATION")
@@ -52,7 +54,42 @@ class QuickIndexWorker(
         classifier.initialize()
 
         val resolver = applicationContext.contentResolver
+        val prefs: SharedPreferences = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val lastIndexTimestamp = prefs.getLong(KEY_LAST_INDEX_TIMESTAMP, 0L)
+
+        // Step 1: Collect all current MediaStore URIs (for deletion detection)
+        val mediaUris = mutableSetOf<String>()
+        resolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            arrayOf(MediaStore.Images.Media._ID),
+            null, null, null,
+        )?.use { cur ->
+            val idIdx = cur.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+            while (cur.moveToNext()) {
+                val id = cur.getLong(idIdx)
+                mediaUris.add(ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id).toString())
+            }
+        }
+
+        // Step 2: Delete images no longer in MediaStore
+        val dbUris = repo.listUris().toHashSet()
+        val toDelete = dbUris - mediaUris
+        if (toDelete.isNotEmpty()) {
+            repo.deleteByUris(toDelete.toList())
+        }
+
+        // Step 3: Incremental scan — only images added after last index run
         val existing = repo.listUris().toHashSet()
+        val selection = if (lastIndexTimestamp > 0) {
+            "${MediaStore.Images.Media.DATE_ADDED} > ?"
+        } else {
+            null
+        }
+        val selectionArgs = if (lastIndexTimestamp > 0) {
+            arrayOf(lastIndexTimestamp.toString())
+        } else {
+            null
+        }
 
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
@@ -68,8 +105,8 @@ class QuickIndexWorker(
         resolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             projection,
-            null,
-            null,
+            selection,
+            selectionArgs,
             "${MediaStore.Images.Media.DATE_ADDED} DESC",
         )?.use { cur ->
             val idIdx = cur.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
@@ -126,6 +163,9 @@ class QuickIndexWorker(
                 setForeground(getForegroundInfo(indexed, QUICK_LIMIT))
             }
         }
+
+        // Save timestamp for next incremental run
+        prefs.edit().putLong(KEY_LAST_INDEX_TIMESTAMP, System.currentTimeMillis() / 1000).apply()
 
         if (indexed > 0) {
             val fullRequest = OneTimeWorkRequestBuilder<IndexWorker>().build()

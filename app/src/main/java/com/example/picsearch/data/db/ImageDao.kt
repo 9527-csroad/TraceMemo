@@ -70,4 +70,7 @@ interface ImageDao {
 
     @Query("SELECT * FROM images WHERE uri IN (:uris)")
     suspend fun listEntitiesByUris(uris: List<String>): List<ImageEntity>
+
+    @Query("DELETE FROM images WHERE uri IN (:uris)")
+    suspend fun deleteByUris(uris: List<String>)
 }

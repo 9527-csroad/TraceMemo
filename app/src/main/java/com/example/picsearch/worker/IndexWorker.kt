@@ -2,6 +2,7 @@ package com.example.picsearch.worker
 
 import android.content.ContentUris
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Build
 import android.provider.MediaStore
 import androidx.room.Room
@@ -16,6 +17,10 @@ import com.example.picsearch.ml.FeatureExtractor
 import com.example.picsearch.ml.NcnnClip
 import com.example.picsearch.util.MediaStoreHelper
 import com.example.picsearch.util.FloatCodec
+
+const val PREFS_NAME = "index_progress"
+const val KEY_INDEXED_COUNT = "indexed_count"
+const val KEY_TOTAL_COUNT = "total_count"
 
 class IndexWorker(
     appContext: Context,
@@ -35,7 +40,51 @@ class IndexWorker(
         classifier.initialize()
 
         val resolver = applicationContext.contentResolver
+        val prefs: SharedPreferences = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val lastIndexTimestamp = prefs.getLong(QuickIndexWorker.KEY_LAST_INDEX_TIMESTAMP, 0L)
+
+        // Collect all current MediaStore URIs (for deletion detection)
+        val mediaUris = mutableSetOf<String>()
+        resolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            arrayOf(MediaStore.Images.Media._ID),
+            null, null, null,
+        )?.use { cur ->
+            val idIdx = cur.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
+            while (cur.moveToNext()) {
+                val id = cur.getLong(idIdx)
+                mediaUris.add(ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id).toString())
+            }
+        }
+
+        // Delete images no longer in MediaStore
+        val dbUris = repo.listUris().toHashSet()
+        val toDelete = dbUris - mediaUris
+        if (toDelete.isNotEmpty()) {
+            repo.deleteByUris(toDelete.toList())
+        }
+
+        // Incremental scan
         val existing = repo.listUris().toHashSet()
+        val selection = if (lastIndexTimestamp > 0) {
+            "${MediaStore.Images.Media.DATE_ADDED} > ?"
+        } else {
+            null
+        }
+        val selectionArgs = if (lastIndexTimestamp > 0) {
+            arrayOf(lastIndexTimestamp.toString())
+        } else {
+            null
+        }
+
+        // Count total new images to process
+        val totalCursor = resolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            arrayOf(MediaStore.Images.Media._ID),
+            selection, selectionArgs, null,
+        )
+        val totalNewCount = totalCursor?.count ?: 0
+        totalCursor?.close()
 
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
@@ -47,11 +96,12 @@ class IndexWorker(
             MediaStore.Images.Media.LONGITUDE,
         )
 
+        var indexed = 0
         resolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             projection,
-            null,
-            null,
+            selection,
+            selectionArgs,
             "${MediaStore.Images.Media.DATE_ADDED} DESC",
         )?.use { cur ->
             val idIdx = cur.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
@@ -102,8 +152,23 @@ class IndexWorker(
                 )
                 repo.upsert(entity)
                 existing.add(uriStr)
+                indexed++
+
+                // Update progress in SharedPreferences every 10 images
+                if (indexed % 10 == 0) {
+                    prefs.edit()
+                        .putInt(KEY_INDEXED_COUNT, repo.count())
+                        .putInt(KEY_TOTAL_COUNT, totalNewCount)
+                        .apply()
+                }
             }
         }
+
+        // Final progress update
+        prefs.edit()
+            .putInt(KEY_INDEXED_COUNT, repo.count())
+            .putInt(KEY_TOTAL_COUNT, totalNewCount)
+            .apply()
 
         return Result.success()
     }
