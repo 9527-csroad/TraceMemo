@@ -219,18 +219,54 @@
 
 ---
 
-### Dev-3: 单元测试覆盖
+### Dev-7: NLP Filter Extractor（时间/地点自动提取）
 
 **优先级**: P1 | **状态**: 待实施
 
-**目标**: 对以下核心逻辑添加 JVM 单元测试（`app/src/test/`）:
+**目标**: 从用户搜索文本中自动提取时间和地点信息，填充到 SearchFilter，剩余文本送入 CLIP 语义搜索。
 
-- `ChineseTokenizer` — 中文分词（用 mock vocab 或直接测 basicTokenize/wordpiece）
-- `SceneClassifier` — 场景分类（mock FeatureExtractor）
-- `SearchFilter` — isEmpty/selectedCount/filter 逻辑
-- `FloatCodec` — 序列化往返
+**方案**:
 
-**验证**: `.\gradlew test` 全部通过。
+1. `ExtractedFilter` data class — 包含 `timeRange`, `locationBounds`, `locationName`, `remainingText`
+2. `TimeExpressionParser` — 纯 Kotlin 时间解析器，支持相对时间词（去年/上个月/上周/昨天等）、季节（春天/夏季等）、节日（春节/国庆/中秋等）、组合表达式（去年夏天/前年上半年）、数字表达式（3个月前/2周前）
+3. `LocationMatcher` — 从 assets 加载中国城市 + 国家边界 + 国家别名 JSON，做子串匹配返回 `LocationBounds`
+4. `NlpFilterExtractor` — 组合入口，先提取时间 → 移除匹配关键词 → 提取地点 → 清理剩余文本
+5. `ExtractedFilterBar` UI — 在搜索框下方显示提取的标签（📅 时间 / 📍 地点），带 ✕ 清除按钮
+6. `MainViewModel.search()` 集成 — 搜索时自动 NLP 提取，手动 filter 优先于 NLP 提取，用 `remainingText` 做 CLIP 搜索
+7. `MainScreen` 集成 — 展示 `ExtractedFilterBar`，清除后自动重新搜索
+
+**文件**:
+
+- Create: `app/src/main/java/com/example/picsearch/util/ExtractedFilter.kt`
+- Create: `app/src/main/java/com/example/picsearch/util/TimeExpressionParser.kt`
+- Create: `app/src/main/java/com/example/picsearch/util/LocationMatcher.kt`
+- Create: `app/src/main/java/com/example/picsearch/util/NlpFilterExtractor.kt`
+- Create: `app/src/main/assets/geocoding/country_aliases.json`
+- Create: `app/src/main/assets/geocoding/china_cities_full.json`
+- Create: `app/src/main/java/com/example/picsearch/ui/component/ExtractedFilterBar.kt`
+- Modify: `app/src/main/java/com/example/picsearch/MainViewModel.kt`
+- Modify: `app/src/main/java/com/example/picsearch/ui/screen/MainScreen.kt`
+- Create: `app/src/test/java/com/example/picsearch/util/TimeExpressionParserTest.kt`
+- Create: `app/src/test/java/com/example/picsearch/util/LocationMatcherTest.kt`
+- Create: `app/src/test/java/com/example/picsearch/util/NlpFilterExtractorTest.kt`
+
+**验证**: `.\gradlew app:assembleDebug` 通过，单元测试全部通过。
+
+---
+
+### Dev-3: 单元测试覆盖
+
+**优先级**: P1 | **状态**: 部分完成
+
+**已实现**:
+- `FloatCodecTest.kt` — 6 个测试：空数组、单元素、多元素、768 维 CLIP 向量、little-endian 字节序、余弦相似度往返验证
+- `SearchFilterTest.kt` — 10 个测试：isEmpty/selectedCount、LocationBounds.fromBucket、LocationCluster.displayName（含可读名/回退/南半球）
+- `TimeExpressionParserTest.kt` — 10 个测试（之前已完成）
+- `ExampleUnitTest.kt` — 1 个样例
+
+**待实现**（依赖 Robolectric / instrumented tests）:
+- `ChineseTokenizer` — 中文分词（需要 Android assets vocab.txt）
+- `SceneClassifier` — 场景分类（需要 mock FeatureExtractor + Android assets）
 
 ---
 
