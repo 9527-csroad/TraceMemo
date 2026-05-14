@@ -48,14 +48,6 @@ interface ImageDao {
 
     @Query(
         """
-        SELECT uri, feature, scene_tags FROM images
-        WHERE scene_tags IS NOT NULL AND scene_tags LIKE '%' || :tag || '%'
-        """
-    )
-    suspend fun listFeaturesBySceneTag(tag: String): List<UriFeature>
-
-    @Query(
-        """
         SELECT ROUND(latitude, 1) AS latBucket, ROUND(longitude, 1) AS lonBucket,
                AVG(latitude) AS centerLat, AVG(longitude) AS centerLon,
                COUNT(*) AS count
@@ -75,4 +67,7 @@ interface ImageDao {
 
     @Query("SELECT COUNT(*) FROM images")
     suspend fun count(): Int
+
+    @Query("SELECT * FROM images WHERE uri IN (:uris)")
+    suspend fun listEntitiesByUris(uris: List<String>): List<ImageEntity>
 }

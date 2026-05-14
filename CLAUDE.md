@@ -19,7 +19,9 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 .\gradlew clean                # 清理
 ```
 
-- Windows 上运行 `gradlew`（非 `./gradlew`），脚本是 `gradlew.bat`
+- **必须使用 PowerShell 工具执行构建命令**，不要用 Bash（`gradlew.bat` 在 `/usr/bin/bash` 下不可用）
+- 示例：`PowerShell('$env:JAVA_HOME = "..."; .\gradlew.bat app:assembleDebug')`
+- Windows 上 `gradlew`（无后缀）PowerShell 可自动查找 `.bat`，但 Bash 不行
 - 必须设置 `JAVA_HOME` 指向 Android Studio 自带的 JDK
 - 修改 `app/src/main/cpp/` 后直接 `assembleDebug`，CMake 自动处理
 

@@ -2,6 +2,7 @@ package com.example.picsearch.worker
 
 import android.content.ContentUris
 import android.content.Context
+import android.os.Build
 import android.provider.MediaStore
 import androidx.room.Room
 import androidx.work.CoroutineWorker
@@ -13,7 +14,7 @@ import com.example.picsearch.data.repository.ImageRepository
 import com.example.picsearch.ml.ChineseTokenizer
 import com.example.picsearch.ml.FeatureExtractor
 import com.example.picsearch.ml.NcnnClip
-import com.example.picsearch.util.ExifHelper
+import com.example.picsearch.util.MediaStoreHelper
 import com.example.picsearch.util.FloatCodec
 
 class IndexWorker(
@@ -21,6 +22,7 @@ class IndexWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
 
+    @Suppress("DEPRECATION")
     override suspend fun doWork(): Result {
         val db = Room.databaseBuilder(applicationContext, AppDatabase::class.java, "picsearch.db").build()
         val repo = ImageRepository(db.imageDao())
@@ -41,6 +43,8 @@ class IndexWorker(
             MediaStore.Images.Media.WIDTH,
             MediaStore.Images.Media.HEIGHT,
             MediaStore.Images.Media.DATE_TAKEN,
+            MediaStore.Images.Media.LATITUDE,
+            MediaStore.Images.Media.LONGITUDE,
         )
 
         resolver.query(
@@ -55,6 +59,8 @@ class IndexWorker(
             val wIdx = cur.getColumnIndexOrThrow(MediaStore.Images.Media.WIDTH)
             val hIdx = cur.getColumnIndexOrThrow(MediaStore.Images.Media.HEIGHT)
             val dateIdx = cur.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
+            val latIdx = cur.getColumnIndexOrThrow(MediaStore.Images.Media.LATITUDE)
+            val lonIdx = cur.getColumnIndexOrThrow(MediaStore.Images.Media.LONGITUDE)
 
             while (cur.moveToNext()) {
                 if (isStopped) return Result.retry()
@@ -67,7 +73,17 @@ class IndexWorker(
                 val feat = extractor.encodeImage(resolver, uri) ?: continue
                 var mag = 0f; for (v in feat) mag += v * v
                 if (mag < 1e-6f) continue
-                val exif = ExifHelper.read(resolver, uri)
+
+                val gps = MediaStoreHelper.extractGps(
+                    resolver, uri,
+                    cur.getDouble(latIdx),
+                    cur.getDouble(lonIdx),
+                )
+                var dateTaken: Long? = gps.dateTaken
+
+                if (dateTaken == null) {
+                    dateTaken = cur.getLong(dateIdx).takeIf { it > 0 }
+                }
 
                 val sceneTags = classifier.classify(feat)
                 val sceneTagsStr = if (sceneTags.isNotEmpty()) sceneTags.joinToString(",") else null
@@ -75,9 +91,9 @@ class IndexWorker(
                 val entity = ImageEntity(
                     uri = uriStr,
                     feature = FloatCodec.toBytes(feat),
-                    dateTaken = exif.dateTaken ?: cur.getLong(dateIdx).takeIf { it > 0 },
-                    latitude = exif.latitude,
-                    longitude = exif.longitude,
+                    dateTaken = dateTaken,
+                    latitude = gps.latitude,
+                    longitude = gps.longitude,
                     displayName = cur.getString(nameIdx),
                     width = cur.getInt(wIdx),
                     height = cur.getInt(hIdx),
