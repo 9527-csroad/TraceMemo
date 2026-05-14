@@ -27,6 +27,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -45,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -179,7 +184,7 @@ fun MainScreen(vm: MainViewModel) {
             EmptyStateView(
                 title = "还没有索引照片",
                 description = "开始索引你的照片，然后用文字描述就能找到它们。所有处理都在本机完成，隐私安全。",
-                actionText = "📸 开始索引",
+                actionText = "开始索引",
                 onAction = { startIndexWithPermission() },
             )
         }
@@ -224,7 +229,9 @@ fun MainScreen(vm: MainViewModel) {
             onValueChange = { query = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .height(52.dp)
+                .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp)),
             placeholder = { Text("搜索 \"日落时的海滩\"...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -239,7 +246,12 @@ fun MainScreen(vm: MainViewModel) {
                     )
                 } else if (query.isNotEmpty()) {
                     IconButton(onClick = { doSearch(query) }) {
-                        Text("🔍", fontSize = 18.sp)
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "搜索",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
                 }
             },
@@ -247,8 +259,8 @@ fun MainScreen(vm: MainViewModel) {
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.surface,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedIndicatorColor = Primary,
-                unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
             ),
         )
 
@@ -388,8 +400,15 @@ fun MainScreen(vm: MainViewModel) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Outlined.AddPhotoAlternate,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Spacer(Modifier.height(4.dp))
                         Text(
-                            text = "📸 索引照片",
+                            text = "索引照片",
                             color = Color.White,
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
