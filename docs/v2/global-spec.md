@@ -10,24 +10,9 @@
 
 ### Dev-1: 提取 Worker GPS 公共逻辑
 
-**优先级**: P1 | **状态**: 待实施
+**优先级**: P1 | **状态**: ✅ 已完成
 
-**问题**: `QuickIndexWorker.kt` 和 `IndexWorker.kt` 各有一份 ~40 行完全相同的 GPS 提取逻辑（MediaStore 列读取 + setRequireOriginal EXIF fallback + 零值过滤），场景分类初始化逻辑也重复。
-
-**方案**: 提取到新建工具类 `util/MediaStoreHelper.kt`:
-```kotlin
-object MediaStoreHelper {
-    data class GpsResult(val latitude: Double?, val longitude: Double?)
-    fun extractGps(resolver: ContentResolver, uri: Uri): GpsResult
-}
-```
-
-**文件**:
-- Create: `app/src/main/java/com/example/picsearch/util/MediaStoreHelper.kt`
-- Modify: `app/src/main/java/com/example/picsearch/worker/QuickIndexWorker.kt`
-- Modify: `app/src/main/java/com/example/picsearch/worker/IndexWorker.kt`
-
-**验证**: `.\gradlew app:assembleDebug` 通过，两个 Worker GPS 逻辑替换为一行调用。
+提取到 `util/MediaStoreHelper.kt`。两个 Worker 的 GPS 提取 + EXIF fallback + 零值过滤逻辑已替换为单行调用 `MediaStoreHelper.extractGps()`，同时携带 `dateTaken`。
 
 ---
 
