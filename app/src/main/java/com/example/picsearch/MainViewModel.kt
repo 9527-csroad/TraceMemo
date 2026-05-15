@@ -93,6 +93,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _hasShownResumeDialog = MutableStateFlow(false)
     val hasShownResumeDialog: StateFlow<Boolean> = _hasShownResumeDialog
 
+    private val _isIndexing = MutableStateFlow(false)
+    val isIndexing: StateFlow<Boolean> = _isIndexing
+
     private lateinit var sceneClassifier: SceneClassifier
     private lateinit var nlpExtractor: NlpFilterExtractor
 
@@ -164,11 +167,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 // Read full index progress from SharedPreferences
                 val indexed = prefs.getInt(KEY_INDEXED_COUNT, -1)
                 val total = prefs.getInt(KEY_TOTAL_COUNT, -1)
-                if (indexed >= 0 && total > 0) {
-                    _fullIndexProgress.value = indexed to total
-                } else {
-                    _fullIndexProgress.value = null
-                }
+                val hasFullProgress = indexed >= 0 && total > 0
+                _fullIndexProgress.value = if (hasFullProgress) indexed to total else null
+                _isIndexing.value = hasFullProgress || _indexedCount.value < _totalPhotoCount.value && _indexedCount.value > 0
             }
         }
     }
@@ -199,16 +200,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
             if (total > 0 && dbCount >= total) return@launch
 
+            // Always enqueue IndexWorker for resume — Workers handle incremental
+            // scans via lastIndexTimestamp, so re-running QuickIndexWorker is wasteful.
             val ctx = getApplication<Application>()
             val workManager = WorkManager.getInstance(ctx)
+            val fullRequest = OneTimeWorkRequestBuilder<IndexWorker>().build()
+            workManager.enqueueUniqueWork("full_index", ExistingWorkPolicy.REPLACE, fullRequest)
+        }
+    }
 
-            if (dbCount < 100) {
-                val quickRequest = OneTimeWorkRequestBuilder<QuickIndexWorker>().build()
-                workManager.enqueueUniqueWork("quick_index", ExistingWorkPolicy.REPLACE, quickRequest)
-            } else {
-                val fullRequest = OneTimeWorkRequestBuilder<IndexWorker>().build()
-                workManager.enqueueUniqueWork("full_index", ExistingWorkPolicy.REPLACE, fullRequest)
-            }
+    fun startFullIndex() {
+        val ctx = getApplication<Application>()
+        val workManager = WorkManager.getInstance(ctx)
+        val fullRequest = OneTimeWorkRequestBuilder<IndexWorker>().build()
+        workManager.enqueueUniqueWork("full_index", ExistingWorkPolicy.REPLACE, fullRequest)
+    }
+
+    fun cancelIndexing() {
+        viewModelScope.launch {
+            WorkManager.getInstance(getApplication<Application>()).cancelAllWork()
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Spec: close App stops indexing
+        viewModelScope.launch {
+            WorkManager.getInstance(getApplication<Application>()).cancelAllWork()
         }
     }
 

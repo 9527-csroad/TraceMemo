@@ -41,7 +41,8 @@ fun IndexProgressView(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp),
+                .padding(bottom = 16.dp)
+                .clickable(onClick = onDismiss),
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -49,16 +50,13 @@ fun IndexProgressView(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "返回",
                 modifier = Modifier
-                    .clickable(onClick = onDismiss)
                     .padding(8.dp)
                     .size(24.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = " 返回搜索",
-                modifier = Modifier
-                    .clickable(onClick = onDismiss)
-                    .padding(vertical = 8.dp),
+                modifier = Modifier.padding(vertical = 8.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
             )

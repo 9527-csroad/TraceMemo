@@ -25,7 +25,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,7 +38,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -56,9 +54,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import com.example.picsearch.MainViewModel
 import com.example.picsearch.data.LocationBounds
 import com.example.picsearch.data.LocationCluster
@@ -81,7 +76,6 @@ import com.example.picsearch.ui.component.NoResultsView
 import com.example.picsearch.ui.component.SearchFilterPanel
 import com.example.picsearch.ui.component.SkeletonCard
 import com.example.picsearch.ui.theme.Primary
-import com.example.picsearch.worker.IndexWorker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -102,6 +96,7 @@ fun MainScreen(vm: MainViewModel) {
     val totalPhotos by vm.totalPhotoCount.collectAsState()
     val isIndexDone by vm.isIndexComplete.collectAsState()
     val hasShownDialog by vm.hasShownResumeDialog.collectAsState()
+    val vmIsIndexing by vm.isIndexing.collectAsState()
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -170,28 +165,19 @@ fun MainScreen(vm: MainViewModel) {
         permLauncher.launch(permissions)
     }
 
-    val isIndexing = fullProgress != null
-
     // Show resume dialog on return launch when indexing is incomplete
-    if (count > 0 && !isIndexing && !isIndexDone && !hasShownDialog) {
-        LaunchedEffect(Unit) {
-            showResumeDialog = true
-        }
+    if (count > 0 && !vmIsIndexing && !isIndexDone && !hasShownDialog) {
+        showResumeDialog = true
     }
 
     // First launch: show index choice page when DB is empty
-    if (count == 0 && !isIndexing) {
+    if (count == 0 && !vmIsIndexing) {
         if (totalPhotos > 0) {
             IndexChoicePage(
                 totalCount = totalPhotos,
                 onQuickIndex = { startIndexWithPermission() },
                 onFullIndex = {
-                    val fullRequest = OneTimeWorkRequestBuilder<IndexWorker>().build()
-                    WorkManager.getInstance(ctx).enqueueUniqueWork(
-                        "full_index",
-                        ExistingWorkPolicy.REPLACE,
-                        fullRequest,
-                    )
+                    vm.startFullIndex()
                     showIndexProgress = true
                 },
             )
@@ -279,7 +265,7 @@ fun MainScreen(vm: MainViewModel) {
 
                 val pillState = when {
                     isIndexDone -> IndexPillState.Done
-                    isIndexing -> IndexPillState.Indexing(
+                    vmIsIndexing -> IndexPillState.Indexing(
                         fullProgress?.first ?: count,
                         fullProgress?.second ?: totalPhotos.coerceAtLeast(count),
                     )
