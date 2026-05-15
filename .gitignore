@@ -38,3 +38,7 @@ test_images/
 
 # cnclip project
 Chinese-CLIP/
+
+*.png
+*.jpg
+*.mp4

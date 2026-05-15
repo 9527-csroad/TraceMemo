@@ -17,32 +17,38 @@ import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
     primary = Primary,
-    secondary = Secondary,
-    tertiary = AccentGreen,
+    secondary = PrimaryVariant,
+    tertiary = Tertiary,
     background = Background,
-    surface = SurfaceWhite,
+    surface = Surface,
+    surfaceVariant = SurfaceVariant,
     onPrimary = Color.White,
     onSecondary = Color.White,
-    onTertiary = Color.White,
+    onTertiary = TertiaryOn,
     onBackground = TextPrimary,
     onSurface = TextPrimary,
+    onSurfaceVariant = TextSecondary,
     outline = BorderColor,
-    outlineVariant = SurfaceFaint,
+    outlineVariant = SurfaceVariant,
+    error = ErrorColor,
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFE4E4E7),
-    secondary = Color(0xFFD4D4D8),
-    tertiary = AccentGreen,
-    background = Color(0xFF09090B),
-    surface = Color(0xFF18181B),
+    primary = DarkPrimary,
+    secondary = DarkSecondary,
+    tertiary = Tertiary,
+    background = DarkBackground,
+    surface = DarkSurface,
+    surfaceVariant = DarkSurfaceVariant,
     onPrimary = Primary,
-    onSecondary = Secondary,
+    onSecondary = Color.Black,
     onTertiary = Color.Black,
-    onBackground = Color(0xFFF4F4F5),
-    onSurface = Color(0xFFF4F4F5),
-    outline = Color(0xFF3F3F46),
-    outlineVariant = Color(0xFF27272A),
+    onBackground = DarkOnSurface,
+    onSurface = DarkOnSurface,
+    onSurfaceVariant = Color(0xFFA1A1AA),
+    outline = DarkOutline,
+    outlineVariant = DarkOutlineVariant,
+    error = Color(0xFFEF4444),
 )
 
 @Composable
@@ -64,6 +70,7 @@ fun PicSearchTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
+            WindowCompat.setDecorFitsSystemWindows(window, false)
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,10 +20,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.picsearch.ui.theme.AccentGreen
+import com.example.picsearch.ui.theme.Tertiary
 
 @Composable
 fun IndexProgressView(
@@ -35,28 +37,27 @@ fun IndexProgressView(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(24.dp),
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
-                .clickable(onClick = onDismiss),
+                .padding(bottom = 24.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onDismiss)
+                .padding(8.dp),
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "返回",
-                modifier = Modifier
-                    .padding(8.dp)
-                    .size(24.dp),
+                modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = " 返回搜索",
-                modifier = Modifier.padding(vertical = 8.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium,
             )
@@ -66,25 +67,32 @@ fun IndexProgressView(
             text = "正在索引照片",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
         )
         Text(
             text = "可返回搜索，索引在后台继续",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp),
         )
 
         Box(
             modifier = Modifier
-                .size(120.dp)
-                .padding(16.dp),
+                .size(140.dp)
+                .padding(20.dp),
             contentAlignment = Alignment.Center,
         ) {
+            CircularProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                strokeWidth = 4.dp,
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "$indexedCount",
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
                     text = "/ ${totalCount ?: "..."}",
@@ -118,17 +126,16 @@ private fun PhaseIndicator(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+        modifier = modifier.fillMaxWidth(),
         color = if (isActive)
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+            Tertiary.copy(alpha = 0.08f)
         else
-            MaterialTheme.colorScheme.surface,
-        shape = MaterialTheme.shapes.medium,
+            MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(12.dp),
+        tonalElevation = if (isActive) 1.dp else 0.dp,
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -139,31 +146,27 @@ private fun PhaseIndicator(
                     CircularProgressIndicator(
                         modifier = Modifier.size(12.dp),
                         strokeWidth = 2.dp,
-                        color = AccentGreen,
+                        color = Tertiary,
                     )
                 } else {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(
-                                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                shape = MaterialTheme.shapes.small,
-                            ),
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
                     )
                 }
             }
             Column(
                 modifier = Modifier
-                    .padding(start = 8.dp)
+                    .padding(start = 10.dp)
                     .weight(1f),
             ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (isActive)
-                        MaterialTheme.colorScheme.onSurface
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
                     text = subtitle,

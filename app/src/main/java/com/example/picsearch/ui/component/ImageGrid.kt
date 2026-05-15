@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -40,15 +41,15 @@ fun ImageGrid(
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier.padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = modifier.padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         itemsIndexed(uris) { index, item ->
             Box(
                 modifier = Modifier
                     .aspectRatio(1f)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .clickable(
                         indication = ripple(),
                         interactionSource = remember { MutableInteractionSource() },
@@ -71,21 +72,24 @@ fun ImageGrid(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(8.dp)
-                            .background(Color(0xF0FFFFFF), MaterialTheme.shapes.small)
+                            .background(Color(0xCCFFFFFF), MaterialTheme.shapes.small)
                             .padding(horizontal = 6.dp, vertical = 3.dp),
                     )
                 }
-                Text(
-                    text = "${(item.score * 100).toInt()}%",
-                    fontSize = 11.sp,
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium,
+                Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(8.dp)
-                        .background(Color(0xB3000000), MaterialTheme.shapes.small)
-                        .padding(horizontal = 6.dp, vertical = 3.dp),
-                )
+                        .background(Color(0xB3000000), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                ) {
+                    Text(
+                        text = "${(item.score * 100).toInt()}%",
+                        fontSize = 11.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
             }
         }
     }

@@ -2,7 +2,6 @@ package com.example.picsearch.ui.screen
 
 import android.Manifest
 import android.os.Build
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -18,8 +17,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -28,10 +30,10 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -53,7 +55,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.picsearch.MainViewModel
 import com.example.picsearch.data.LocationBounds
 import com.example.picsearch.data.LocationCluster
@@ -75,7 +76,6 @@ import com.example.picsearch.ui.component.IndexProgressView
 import com.example.picsearch.ui.component.NoResultsView
 import com.example.picsearch.ui.component.SearchFilterPanel
 import com.example.picsearch.ui.component.SkeletonCard
-import com.example.picsearch.ui.theme.Primary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -140,7 +140,7 @@ fun MainScreen(vm: MainViewModel) {
 
     var selectedImage by remember { mutableStateOf<ImageDetail?>(null) }
 
-    // Android 10+ 需要照片 + 位置权限才能读取 EXIF GPS
+    // Android 10+ GPS permission launcher
     val needLocationPerm = Build.VERSION.SDK_INT >= 29
     val basePermission = if (Build.VERSION.SDK_INT >= 33) {
         Manifest.permission.READ_MEDIA_IMAGES
@@ -170,7 +170,7 @@ fun MainScreen(vm: MainViewModel) {
         showResumeDialog = true
     }
 
-    // First launch: show index choice page when DB is empty
+    // --- First launch: Index choice page (DB empty) ---
     if (count == 0 && !vmIsIndexing) {
         if (totalPhotos > 0) {
             IndexChoicePage(
@@ -180,6 +180,7 @@ fun MainScreen(vm: MainViewModel) {
                     vm.startFullIndex()
                     showIndexProgress = true
                 },
+                modifier = Modifier.statusBarsPadding(),
             )
             return
         }
@@ -200,17 +201,20 @@ fun MainScreen(vm: MainViewModel) {
                 description = "开始索引你的照片，然后用文字描述就能找到它们。所有处理都在本机完成，隐私安全。",
                 actionText = "开始索引",
                 onAction = { startIndexWithPermission() },
+                modifier = Modifier.statusBarsPadding(),
             )
         }
         return
     }
 
-    // Index progress as a dismissible page
+    // --- Index progress as a dismissible page ---
     if (showIndexProgress) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+                .navigationBarsPadding(),
             contentAlignment = Alignment.Center,
         ) {
             val (overlayIndexed, overlayTotal) = fullProgress ?: (count to totalPhotos)
@@ -225,6 +229,7 @@ fun MainScreen(vm: MainViewModel) {
         return
     }
 
+    // --- Main content ---
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
@@ -240,13 +245,14 @@ fun MainScreen(vm: MainViewModel) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .background(MaterialTheme.colorScheme.background),
         ) {
-            // Header with Index Pill
+            // === Header ===
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top,
             ) {
@@ -254,7 +260,7 @@ fun MainScreen(vm: MainViewModel) {
                     Text(
                         text = "PicSearch",
                         style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground,
                     )
                     Text(
                         text = "用文字找到你的照片",
@@ -283,48 +289,63 @@ fun MainScreen(vm: MainViewModel) {
                 )
             }
 
-            // Search bar
+            // === Search bar ===
             TextField(
                 value = query,
                 onValueChange = { query = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(52.dp)
-                    .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp)),
-                placeholder = { Text("搜索 \"日落时的海滩\"...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    .padding(horizontal = 20.dp)
+                    .height(56.dp)
+                    .shadow(elevation = 1.dp, shape = RoundedCornerShape(16.dp)),
+                placeholder = {
+                    Text(
+                        "搜索 \"日落时的海滩\"...",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    )
+                },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(
-                    onSearch = { doSearch(query) },
-                ),
+                keyboardActions = KeyboardActions(onSearch = { doSearch(query) }),
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.size(20.dp),
+                    )
+                },
                 trailingIcon = {
                     if (isSearching) {
                         CircularProgressIndicator(
                             modifier = Modifier.padding(4.dp).size(20.dp),
                             strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     } else if (query.isNotEmpty()) {
                         IconButton(onClick = { doSearch(query) }) {
                             Icon(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = "搜索",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp),
                             )
                         }
                     }
                 },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
                 ),
             )
 
-            // Extracted NLP filter tags
+            Spacer(Modifier.height(10.dp))
+
+            // === Extracted NLP filter tags ===
             if (extractedFilter.timeRange != null || extractedFilter.locationBounds != null) {
                 ExtractedFilterBar(
                     extracted = extractedFilter,
@@ -337,9 +358,10 @@ fun MainScreen(vm: MainViewModel) {
                         if (hasSearched && query.isNotBlank()) doSearch(query)
                     },
                 )
+                Spacer(Modifier.height(6.dp))
             }
 
-            // Active filter tags
+            // === Active filter tags ===
             if (!filter.isEmpty || selectedCluster != null) {
                 ActiveFilterTags(
                     filter = filter,
@@ -349,16 +371,17 @@ fun MainScreen(vm: MainViewModel) {
                     onClearScene = { tag -> onSceneToggle(tag) },
                     onOpenFilterPanel = { showFilterPanel = !showFilterPanel },
                 )
+                Spacer(Modifier.height(6.dp))
             }
 
-            // Filter entry row
+            // === Filter entry row ===
             FilterEntryRow(
                 onTimeClick = { showFilterPanel = !showFilterPanel },
                 onLocationClick = { showFilterPanel = !showFilterPanel },
                 onSceneClick = { showFilterPanel = !showFilterPanel },
             )
 
-            // Expandable filter panel
+            // === Expandable filter panel ===
             AnimatedVisibility(visible = showFilterPanel) {
                 SearchFilterPanel(
                     timeRange = timeRange,
@@ -371,18 +394,16 @@ fun MainScreen(vm: MainViewModel) {
                     sceneTagCounts = sceneTagCounts,
                     selectedScenes = selectedScenes,
                     onSceneToggle = onSceneToggle,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            // Sort selector (shown when results exist)
+            // === Sort selector (shown when results exist) ===
             if (results.isNotEmpty()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -390,8 +411,10 @@ fun MainScreen(vm: MainViewModel) {
                         text = "排序",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 4.dp),
                     )
                     SearchSort.entries.forEach { sort ->
+                        val isSelected = sort == currentSort
                         Text(
                             text = sort.label,
                             modifier = Modifier
@@ -400,20 +423,21 @@ fun MainScreen(vm: MainViewModel) {
                                     if (hasSearched && query.isNotBlank()) doSearch(query)
                                 }
                                 .background(
-                                    if (sort == currentSort) Primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                                    shape = MaterialTheme.shapes.small,
+                                    if (isSelected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = RoundedCornerShape(100),
                                 )
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
-                            color = if (sort == currentSort) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = if (sort == currentSort) FontWeight.SemiBold else FontWeight.Normal,
+                                .padding(horizontal = 12.dp, vertical = 5.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                         )
                     }
                 }
-                Spacer(Modifier.height(8.dp))
             }
 
-            // Search results area — takes remaining space, independent scroll
+            // === Search results area — takes remaining space, independent scroll ===
             Column(modifier = Modifier.weight(1f)) {
                 if (hasSearched && results.isEmpty() && !isSearching) {
                     NoResultsView(query = query) { example ->
@@ -425,7 +449,7 @@ fun MainScreen(vm: MainViewModel) {
                         text = "找到 ${results.size} 张照片",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
                     )
                     ImageGrid(
                         uris = results,
@@ -435,17 +459,17 @@ fun MainScreen(vm: MainViewModel) {
                         },
                     )
                 } else if (isSearching) {
-                    Column(modifier = Modifier.padding(horizontal = 10.dp)) {
+                    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
                         repeat(4) {
                             SkeletonCard(modifier = Modifier.fillMaxWidth().aspectRatio(1f))
                         }
                     }
                 }
             }
-        } // Column end
-    } // PullToRefreshBox end
+        }
+    }
 
-    // Resume indexing dialog
+    // === Resume indexing dialog ===
     if (showResumeDialog && !isIndexDone && !hasShownDialog) {
         val remaining = (totalPhotos - count).coerceAtLeast(0)
         AlertDialog(
@@ -466,7 +490,7 @@ fun MainScreen(vm: MainViewModel) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
+                FilledTonalButton(onClick = {
                     showResumeDialog = false
                     vm.markResumeDialogShown()
                     vm.continueIndexing()
@@ -485,7 +509,7 @@ fun MainScreen(vm: MainViewModel) {
         )
     }
 
-    // Image detail sheet
+    // === Image detail sheet ===
     selectedImage?.let { detail ->
         ImageDetailSheet(
             results = results,

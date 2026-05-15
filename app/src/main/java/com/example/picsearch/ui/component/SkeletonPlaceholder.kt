@@ -56,7 +56,7 @@ fun SkeletonCard(modifier: Modifier = Modifier) {
             .padding(6.dp)
             .background(
                 MaterialTheme.colorScheme.outlineVariant,
-                RoundedCornerShape(16.dp),
+                RoundedCornerShape(14.dp),
             ),
     )
 }

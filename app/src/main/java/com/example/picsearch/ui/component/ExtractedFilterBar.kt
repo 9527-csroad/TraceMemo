@@ -1,16 +1,18 @@
 package com.example.picsearch.ui.component
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.picsearch.util.ExtractedFilter
 
@@ -25,39 +27,48 @@ fun ExtractedFilterBar(
 
     Row(
         modifier = modifier
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 20.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         extracted.timeRange?.let {
-            FilterTag(label = formatTimeRange(it), onClear = onClearTime)
+            NlpFilterChip(label = formatTimeRange(it), onClear = onClearTime)
         }
         extracted.locationBounds?.let {
             val name = extracted.locationName ?: "已选地点"
-            FilterTag(label = name, onClear = onClearLocation)
+            NlpFilterChip(label = name, onClear = onClearLocation)
         }
     }
 }
 
 @Composable
-private fun FilterTag(label: String, onClear: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(MaterialTheme.colorScheme.outlineVariant)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+private fun NlpFilterChip(label: String, onClear: () -> Unit) {
+    Surface(
+        modifier = Modifier.clip(RoundedCornerShape(100)),
+        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.15f),
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = " ✕",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.clickable(onClick = onClear),
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        ) {
+            Text(
+                text = "自动",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.tertiary,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = " $label",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = "  ✕",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.clickable(onClick = onClear),
+            )
+        }
     }
 }

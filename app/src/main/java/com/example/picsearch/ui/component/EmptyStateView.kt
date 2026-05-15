@@ -1,9 +1,7 @@
 package com.example.picsearch.ui.component
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -12,10 +10,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,8 +26,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.picsearch.ui.theme.Primary
+
+private val EXAMPLE_QUERIES = listOf(
+    "日落时的海滩",
+    "猫咪的照片",
+    "和朋友聚餐",
+    "去年夏天的旅行",
+    "风景照片",
+)
 
 @Composable
 fun EmptyStateView(
@@ -41,29 +46,22 @@ fun EmptyStateView(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Surface(
-            modifier = Modifier.size(80.dp),
-            shape = MaterialTheme.shapes.large,
-            color = MaterialTheme.colorScheme.outlineVariant,
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Outlined.PhotoCamera,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(40.dp),
-                )
-            }
-        }
+        Icon(
+            imageVector = Icons.Outlined.PhotoCamera,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+            modifier = Modifier.size(72.dp),
+        )
         Spacer(Modifier.height(24.dp))
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(8.dp))
         Text(
@@ -71,26 +69,20 @@ fun EmptyStateView(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
+            lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.3f,
         )
         if (actionText != null && onAction != null) {
             Spacer(Modifier.height(24.dp))
-            Button(
+            FilledTonalButton(
                 onClick = onAction,
-                colors = ButtonDefaults.buttonColors(containerColor = Primary),
+                modifier = Modifier.height(48.dp),
+                shape = RoundedCornerShape(14.dp),
             ) {
                 Text(actionText)
             }
         }
     }
 }
-
-private val EXAMPLE_QUERIES = listOf(
-    "日落时的海滩",
-    "猫咪的照片",
-    "和朋友聚餐",
-    "去年夏天的旅行",
-    "风景照片",
-)
 
 @Composable
 fun NoResultsView(
@@ -100,23 +92,31 @@ fun NoResultsView(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(40.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        Icon(
+            imageVector = Icons.Outlined.SearchOff,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+            modifier = Modifier.size(56.dp),
+        )
+        Spacer(Modifier.height(16.dp))
         Text(
             text = "没有找到匹配的照片",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "试试其他描述",
+            text = "试试以下描述，或者点击「筛选」缩小范围",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         Text(
             text = "试试这些",
             style = MaterialTheme.typography.labelMedium,
@@ -138,20 +138,21 @@ private fun ExampleQueryChips(
         modifier = Modifier.padding(horizontal = 8.dp),
     ) {
         EXAMPLE_QUERIES.forEach { example ->
-            Text(
-                text = example,
+            Surface(
                 modifier = Modifier
-                    .clickable { onClick(example) }
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                        shape = MaterialTheme.shapes.small,
-                    )
-                    .clip(MaterialTheme.shapes.small)
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                color = Primary,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-            )
+                    .clip(RoundedCornerShape(100))
+                    .clickable { onClick(example) },
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+                tonalElevation = 0.dp,
+            ) {
+                Text(
+                    text = example,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
     }
 }

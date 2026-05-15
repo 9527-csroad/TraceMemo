@@ -12,17 +12,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.picsearch.ui.theme.AccentGreen
-import com.example.picsearch.ui.theme.Primary
+import com.example.picsearch.ui.theme.Tertiary
 
 sealed class IndexPillState {
     data object Idle : IndexPillState()
@@ -45,28 +44,28 @@ fun HeaderIndexPill(
             modifier = modifier
                 .clip(RoundedCornerShape(16.dp))
                 .clickable(onClick = onClick)
-                .then(
+                .background(
                     when (pillState) {
-                        is IndexPillState.Idle -> Modifier.background(Primary)
-                        is IndexPillState.Indexing -> Modifier.background(Color(0xFF1a1a1a))
-                        is IndexPillState.Done -> Modifier.background(Color(0xFF1a3320))
+                        is IndexPillState.Idle -> MaterialTheme.colorScheme.primary
+                        is IndexPillState.Indexing -> MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                        is IndexPillState.Done -> Tertiary.copy(alpha = 0.15f)
                     }
                 )
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             when (pillState) {
                 is IndexPillState.Idle -> {
                     Text(
-                        text = "开始索引",
-                        color = Color.White,
-                        fontSize = 12.sp,
+                        text = "索引",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                     )
                     Text(
                         text = " ▸",
-                        color = Color.White.copy(alpha = 0.6f),
-                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                        fontSize = 11.sp,
                     )
                 }
 
@@ -74,27 +73,27 @@ fun HeaderIndexPill(
                     Box(
                         modifier = Modifier
                             .size(6.dp)
-                            .background(AccentGreen, CircleShape),
+                            .background(Tertiary, CircleShape),
                     )
                     Text(
                         text = " ${pillState.indexed} / ${pillState.total}",
-                        color = Color.White,
-                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
                     )
                     Text(
                         text = " ▸",
-                        color = Color.White.copy(alpha = 0.4f),
-                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f),
+                        fontSize = 11.sp,
                     )
                 }
 
                 is IndexPillState.Done -> {
                     Text(
-                        text = "✓ 已完成",
-                        color = AccentGreen,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
+                        text = "已完成",
+                        color = Tertiary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }

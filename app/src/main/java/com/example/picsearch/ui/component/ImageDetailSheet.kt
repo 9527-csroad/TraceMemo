@@ -1,6 +1,5 @@
 package com.example.picsearch.ui.component
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -28,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -49,8 +49,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.picsearch.MainViewModel.ImageScore
-import com.example.picsearch.ui.theme.BorderColor
-import com.example.picsearch.ui.theme.SurfaceWhite
 import com.example.picsearch.util.ReverseGeocoder
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -100,7 +98,15 @@ fun ImageDetailSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(100),
+                    modifier = Modifier
+                        .width(36.dp)
+                        .height(4.dp),
+                ) {}
+                Spacer(Modifier.height(10.dp))
                 Text(
                     text = "${pagerState.currentPage + 1} / ${results.size}",
                     style = MaterialTheme.typography.labelMedium,
@@ -121,7 +127,7 @@ fun ImageDetailSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(sharedScrollState)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
@@ -132,16 +138,14 @@ fun ImageDetailSheet(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp)),
+                        .clip(RoundedCornerShape(16.dp)),
                 )
 
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 12.dp),
-                    color = BorderColor,
-                )
+                Spacer(Modifier.height(16.dp))
 
                 if (item.sceneTags.isNotEmpty()) {
                     SceneTagsFlowRow(tags = item.sceneTags)
+                    Spacer(Modifier.height(8.dp))
                 }
 
                 if (showFullDetail) {
@@ -149,10 +153,14 @@ fun ImageDetailSheet(
                         text = "照片信息",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(vertical = 8.dp),
                     )
                     MetadataList(detail = currentDetail)
                 }
+
+                // Bottom safe area padding
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
@@ -164,52 +172,58 @@ private fun SceneTagsFlowRow(tags: List<String>) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.padding(vertical = 8.dp),
     ) {
         tags.forEach { tag ->
-            Text(
-                text = tag,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(100))
-                    .background(MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-            )
+            Surface(
+                shape = RoundedCornerShape(100),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
+                tonalElevation = 0.dp,
+            ) {
+                Text(
+                    text = tag,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun MetadataList(detail: ImageDetail) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceWhite)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 1.dp,
     ) {
-        MetadataItem(
-            icon = Icons.Filled.AccessTime,
-            label = "拍摄时间",
-            value = detail.dateTaken?.let { formatTimestamp(it) } ?: "未知",
-        )
-        MetadataItem(
-            icon = Icons.Filled.Place,
-            label = "拍摄地点",
-            value = formatLocation(detail.latitude, detail.longitude),
-        )
-        MetadataItem(
-            icon = Icons.Filled.ImageAspectRatio,
-            label = "尺寸",
-            value = "${detail.width} × ${detail.height}",
-        )
-        MetadataItem(
-            icon = Icons.AutoMirrored.Filled.InsertDriveFile,
-            label = "文件名",
-            value = detail.displayName ?: "未知",
-        )
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            MetadataItem(
+                icon = Icons.Filled.AccessTime,
+                label = "拍摄时间",
+                value = detail.dateTaken?.let { formatTimestamp(it) } ?: "未知",
+            )
+            MetadataItem(
+                icon = Icons.Filled.Place,
+                label = "拍摄地点",
+                value = formatLocation(detail.latitude, detail.longitude),
+            )
+            MetadataItem(
+                icon = Icons.Filled.ImageAspectRatio,
+                label = "尺寸",
+                value = "${detail.width} × ${detail.height}",
+            )
+            MetadataItem(
+                icon = Icons.AutoMirrored.Filled.InsertDriveFile,
+                label = "文件名",
+                value = detail.displayName ?: "未知",
+            )
+        }
     }
 }
 
@@ -219,24 +233,31 @@ private fun MetadataItem(icon: ImageVector, label: String, value: String) {
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(10.dp))
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(6.dp).size(16.dp),
+            )
+        }
+        Spacer(Modifier.width(12.dp))
         Column {
             Text(
                 text = label,
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.outline,
+                fontWeight = FontWeight.Medium,
             )
             Text(
                 text = value,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Medium,
+                fontWeight = if (value != "未知" && value != "未知位置") FontWeight.Medium
+                else FontWeight.Normal,
             )
         }
     }

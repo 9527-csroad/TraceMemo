@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +17,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -94,17 +94,23 @@ fun SearchFilterPanel(
     Surface(
         modifier = modifier.fillMaxWidth(),
         tonalElevation = 1.dp,
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text("时间", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
-            Spacer(Modifier.padding(top = 4.dp))
+        Column(modifier = Modifier.padding(16.dp)) {
+            // === Time ===
+            Text(
+                text = "时间",
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.padding(top = 8.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TimePreset.entries.forEach { preset ->
@@ -132,31 +138,39 @@ fun SearchFilterPanel(
                         activePreset = null
                         onTimeRangeChange(null)
                     }) {
-                        Text("×")
+                        Text("清除")
                     }
                 }
             }
-            if (timeRange != null) {
+            if (timeRange != null && activePreset == null) {
                 Text(
                     text = formatTimeRange(timeRange),
                     style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp, start = 4.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp, start = 4.dp),
                 )
             }
 
-            Spacer(Modifier.padding(top = 10.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 12.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            )
+
+            // === Location ===
             val locatedTotal = clusters.sumOf { it.count }
             Text(
-                "地点（$locatedTotal 张含位置${if (unlocatedCount > 0) "，$unlocatedCount 张无位置将被排除" else ""}）",
+                text = "地点（$locatedTotal 张含位置${if (unlocatedCount > 0) "，$unlocatedCount 张无位置将被排除" else ""}）",
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
-            Spacer(Modifier.padding(top = 4.dp))
+            Spacer(Modifier.padding(top = 8.dp))
             if (clusters.isEmpty()) {
                 Text(
                     text = if (unlocatedCount > 0) "你的照片都没有 GPS 信息，无法按地点筛选"
                     else "还没有索引任何图片",
                     style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 val visible = clusters.take(5)
@@ -164,7 +178,7 @@ fun SearchFilterPanel(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     visible.forEach { c ->
@@ -183,24 +197,30 @@ fun SearchFilterPanel(
                     }
                     if (selectedCluster != null) {
                         TextButton(onClick = { onClusterChange(null) }) {
-                            Text("×")
+                            Text("清除")
                         }
                     }
                 }
             }
 
-            Spacer(Modifier.padding(top = 10.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 12.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            )
+
+            // === Scene ===
             Text(
-                "场景",
+                text = "场景",
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
-            Spacer(Modifier.padding(top = 4.dp))
+            Spacer(Modifier.padding(top = 8.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 sceneLabels.forEach { label ->
@@ -215,7 +235,7 @@ fun SearchFilterPanel(
                     TextButton(onClick = {
                         selectedScenes.forEach { onSceneToggle(it) }
                     }) {
-                        Text("×")
+                        Text("清除")
                     }
                 }
             }
@@ -288,8 +308,7 @@ fun FilterToggleHeader(
     modifier: Modifier = Modifier,
 ) {
     TextButton(onClick = onToggle, modifier = modifier) {
-        Text(if (expanded) "▲" else "▼")
-        Spacer(Modifier.width(4.dp))
-        Text(if (selectedCount > 0) "筛选（已选 $selectedCount 项）" else "筛选")
+        Text(if (expanded) "收起" else "展开")
+        Text("筛选（已选 $selectedCount 项）")
     }
 }
