@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PicSearch - 索引流程设计 v2</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, 'Segoe UI', sans-serif; background: #111; color: #e0e0e0; padding: 40px; }
+  h1 { text-align: center; font-size: 1.8em; margin-bottom: 8px; color: #fff; }
+  .subtitle { text-align: center; color: #666; margin-bottom: 40px; font-size: 0.9em; }
+  .section { margin-bottom: 50px; }
+  .section-title { font-size: 1.2em; color: #a855f7; margin-bottom: 20px; border-left: 4px solid #a855f7; padding-left: 12px; }
+  .subsection { font-size: 1em; color: #60a5fa; margin: 24px 0 12px; }
+
+  .phone-grid { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+
+  .phone {
+    width: 340px;
+    background: #000;
+    border-radius: 36px;
+    padding: 12px;
+    border: 2px solid #333;
+  }
+  .phone-screen {
+    background: #0d0d0d;
+    border-radius: 24px;
+    padding: 16px;
+    min-height: 560px;
+    color: #e0e0e0;
+    font-size: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .phone-label { text-align: center; margin-top: 12px; font-size: 0.8em; color: #555; }
+
+  /* Header area */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 16px 0 8px;
+  }
+  .header h2 { font-size: 1.4em; color: #fff; line-height: 1.2; }
+  .header p { font-size: 0.8em; color: #666; margin-top: 2px; }
+
+  /* Pill indicator */
+  .pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .pill.idle { background: #a855f7; color: #fff; }
+  .pill.indexing { background: #222; color: #e0e0e0; border: 1px solid #333; }
+  .pill.done { background: #1a3320; color: #22c55e; border: 1px solid #2a4a2f; }
+
+  .pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .pill .arrow { color: #666; font-size: 10px; }
+
+  /* Search bar */
+  .search-bar {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    padding: 12px;
+    color: #555;
+    margin: 8px 0;
+    font-size: 13px;
+  }
+
+  .chips { display: flex; gap: 4px; margin: 8px 0; flex-wrap: wrap; }
+  .chip { padding: 3px 10px; background: #1a1a1a; border-radius: 10px; font-size: 11px; color: #666; }
+
+  .img-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin: 10px 0; }
+  .img-cell { background: #1a1a1a; aspect-ratio: 1; border-radius: 3px; }
+
+  .divider { height: 1px; background: #222; margin: 10px 0; }
+
+  /* Bottom button - clean, NO index button */
+  .bottom-area {
+    position: absolute;
+    bottom: 0; left: 16px; right: 16px;
+    padding: 10px 0;
+  }
+
+  /* Dialog overlay */
+  .overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 24px;
+  }
+  .dialog {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 24px;
+    width: 88%;
+    text-align: center;
+  }
+  .dialog h3 { font-size: 1em; margin-bottom: 8px; color: #fff; }
+  .dialog p { font-size: 0.8em; color: #888; margin-bottom: 16px; line-height: 1.5; }
+  .dialog .warn { color: #f59e0b; font-size: 0.75em; }
+  .dialog .btns { display: flex; gap: 8px; }
+  .dialog .btns button { flex: 1; padding: 10px; border-radius: 10px; border: none; font-size: 0.8em; }
+  .dialog .btns .cancel { background: #222; color: #ccc; }
+  .dialog .btns .confirm { background: #a855f7; color: #fff; }
+
+  /* Index page */
+  .index-page { text-align: center; padding: 40px 0; }
+  .index-page h2 { font-size: 1.2em; color: #fff; margin-bottom: 8px; }
+  .index-page .sub { font-size: 0.8em; color: #666; }
+  .index-page .counter { font-size: 2.8em; font-weight: 700; color: #fff; margin: 20px 0; }
+  .index-page .counter small { font-size: 0.35em; color: #666; }
+  .bar-track { height: 6px; background: #1a1a1a; border-radius: 3px; width: 80%; margin: 12px auto; }
+  .bar-fill { height: 100%; background: #a855f7; border-radius: 3px; }
+  .phase-card {
+    background: #1a1a1a;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin: 8px auto;
+    width: 85%;
+    text-align: left;
+    font-size: 0.8em;
+    color: #666;
+  }
+  .phase-card.active { background: #1e1030; color: #c084fc; border: 1px solid #2a1545; }
+  .phase-card .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+  .phase-card.active .dot { background: #22c55e; animation: pulse 1.5s infinite; }
+  .phase-card.done .dot { background: #555; }
+
+  /* Index choice page */
+  .choice-page { text-align: center; padding: 30px 0; }
+  .choice-page h2 { font-size: 1.2em; color: #fff; margin-bottom: 6px; }
+  .choice-page .desc { font-size: 0.8em; color: #666; margin-bottom: 6px; }
+  .choice-page .total { font-size: 0.9em; color: #a855f7; margin-bottom: 20px; }
+  .choice-btn {
+    width: 85%;
+    padding: 14px;
+    border-radius: 12px;
+    margin: 6px auto;
+    text-align: center;
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+  .choice-btn.primary { background: #a855f7; color: #fff; }
+  .choice-btn.secondary { background: #1a1a1a; color: #ccc; border: 1px solid #333; }
+  .choice-btn .sub { font-size: 0.8em; opacity: 0.6; display: block; margin-top: 3px; }
+
+  /* Comparison table */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  th { background: #1a1a1a; padding: 10px; text-align: left; color: #fff; border-bottom: 2px solid #a855f7; font-size: 0.85em; }
+  td { padding: 8px 10px; border-bottom: 1px solid #222; color: #ccc; font-size: 0.8em; }
+  tr:hover td { background: #161616; }
+
+  .note { background: #1a1030; border-left: 3px solid #a855f7; padding: 10px 14px; margin: 12px 0; border-radius: 0 8px 8px 0; font-size: 0.85em; color: #c084fc; }
+  .green { color: #22c55e; }
+  .red { color: #ef4444; }
+  .yellow { color: #f59e0b; }
+</style>
+</head>
+<body>
+
+<h1>PicSearch 索引流程 v2</h1>
+<p class="subtitle">Header Pill 指示器方案 — 搜索为主，索引为辅</p>
+
+<!-- ===== 1. Three States ===== -->
+<div class="section">
+  <div class="section-title">一、Header Pill 三种状态</div>
+
+  <div class="phone-grid">
+    <!-- State 1: Idle -->
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="header">
+          <div>
+            <h2>PicSearch</h2>
+            <p>用文字找到你的照片</p>
+          </div>
+          <div class="pill idle">开始索引 <span class="arrow">▸</span></div>
+        </div>
+
+        <div class="search-bar">搜索 "日落时的海滩"...</div>
+
+        <div class="chips">
+          <span class="chip">时间</span>
+          <span class="chip">地点</span>
+          <span class="chip">场景</span>
+        </div>
+
+        <div class="divider"></div>
+        <p style="text-align:center;color:#333;font-size:0.85em;margin-top:40px;">暂无搜索结果</p>
+
+        <!-- No bottom button -->
+      </div>
+      <div class="phone-label">状态 1：未索引 — 紫色 Pill</div>
+    </div>
+
+    <!-- State 2: Indexing -->
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="header">
+          <div>
+            <h2>PicSearch</h2>
+            <p>用文字找到你的照片</p>
+          </div>
+          <div class="pill indexing">
+            <span class="dot"></span>
+            183 / 10123
+            <span class="arrow">▸</span>
+          </div>
+        </div>
+
+        <div class="search-bar">搜索 "日落时的海滩"...</div>
+
+        <div class="chips">
+          <span class="chip">时间</span>
+          <span class="chip">地点</span>
+          <span class="chip">场景</span>
+        </div>
+
+        <div class="img-grid">
+          <div class="img-cell"></div><div class="img-cell"></div><div class="img-cell"></div>
+          <div class="img-cell"></div><div class="img-cell"></div><div class="img-cell"></div>
+          <div class="img-cell"></div><div class="img-cell"></div><div class="img-cell"></div>
+        </div>
+
+        <!-- Clean bottom, nothing -->
+        <div style="position:absolute;bottom:20px;left:0;right:0;text-align:center;color:#222;font-size:0.75em;">— 底部简洁 —</div>
+      </div>
+      <div class="phone-label">状态 2：索引中 — 呼吸点 + 数字</div>
+    </div>
+
+    <!-- State 3: Done -->
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="header">
+          <div>
+            <h2>PicSearch</h2>
+            <p>用文字找到你的照片</p>
+          </div>
+          <div class="pill done">✓ 已完成</div>
+        </div>
+
+        <div class="search-bar">搜索 "日落时的海滩"...</div>
+
+        <div class="chips">
+          <span class="chip">时间</span>
+          <span class="chip">地点</span>
+          <span class="chip">场景</span>
+        </div>
+
+        <div class="img-grid">
+          <div class="img-cell"></div><div class="img-cell"></div><div class="img-cell"></div>
+          <div class="img-cell"></div><div class="img-cell"></div><div class="img-cell"></div>
+          <div class="img-cell"></div><div class="img-cell"></div><div class="img-cell"></div>
+        </div>
+
+        <div style="position:absolute;bottom:20px;left:0;right:0;text-align:center;color:#222;font-size:0.75em;">— 底部简洁 —</div>
+      </div>
+      <div class="phone-label">状态 3：已完成 — 绿色 Pill</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 2. User Flow ===== -->
+<div class="section">
+  <div class="section-title">二、用户完整流程</div>
+
+  <div class="phone-grid">
+    <!-- First launch: choice -->
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="header">
+          <div>
+            <h2>PicSearch</h2>
+            <p>发现你的照片，只需一句话</p>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="choice-page">
+          <h2>开始索引照片</h2>
+          <p class="desc">需要读取手机照片权限<br>所有处理在本机完成，隐私安全</p>
+          <p class="total">检测到手机中有 <strong>10,123</strong> 张照片</p>
+
+          <div class="choice-btn primary">
+            快速索引 Top 100
+            <span class="sub">约 1-2 分钟，先用起来</span>
+          </div>
+
+          <div class="choice-btn secondary">
+            索引全部照片
+            <span class="sub">后台运行，可中断</span>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">首次启动：索引选择页</div>
+    </div>
+
+    <!-- Indexing -->
+    <div class="phone">
+      <div class="phone-screen">
+        <div class="index-page">
+          <h2>正在索引照片</h2>
+          <p class="sub">可返回搜索，索引在后台继续</p>
+
+          <div class="counter">47 <small>/ 10123</small></div>
+          <div class="bar-track"><div class="bar-fill" style="width:0.5%"></div></div>
+          <p style="font-size:0.75em;color:#a855f7;">0.5%</p>
+
+          <div class="phase-card active">
+            <span class="dot"></span><strong>快速索引阶段</strong><br>
+            正在索引 Top 100 张照片...
+          </div>
+
+          <div class="phase-card done">
+            <span class="dot"></span>后台完整索引<br>
+            可返回搜索，仍可用
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">索引进行中（可返回）</div>
+    </div>
+
+    <!-- Return launch with dialog -->
+    <div class="phone">
+      <div class="phone-screen" style="position:relative;">
+        <div class="header">
+          <div>
+            <h2>PicSearch</h2>
+            <p>用文字找到你的照片</p>
+          </div>
+          <div class="pill indexing">
+            <span class="dot"></span>
+            183 / 10123
+          </div>
+        </div>
+
+        <div class="search-bar">搜索 "日落时的海滩"...</div>
+
+        <div class="img-grid">
+          <div class="img-cell"></div><div class="img-cell"></div><div class="img-cell"></div>
+          <div class="img-cell"></div><div class="img-cell"></div><div class="img-cell"></div>
+        </div>
+
+        <div class="overlay">
+          <div class="dialog">
+            <h3>继续索引？</h3>
+            <p>您还有 <strong style="color:#a855f7;">9,940 张</strong> 照片未完成索引。<br>是否继续索引？<br><span class="warn">退出 App 将停止索引</span></p>
+            <div class="btns">
+              <button class="cancel">稍后</button>
+              <button class="confirm">继续索引</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">再次打开：弹窗提示</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 3. State Table ===== -->
+<div class="section">
+  <div class="section-title">三、状态机</div>
+
+  <table>
+    <thead>
+      <tr><th>触发</th><th>UI 页面</th><th>Header Pill</th><th>弹窗</th><th>Worker</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>首次打开 (DB=0)</td><td>索引选择页</td><td>无</td><td>无</td><td>无</td></tr>
+      <tr><td>点击「快速 Top 100」</td><td>索引进度页</td><td>无（被遮挡）</td><td>无</td><td>QuickIndexWorker</td></tr>
+      <tr><td>Top 100 完成</td><td class="green">自动 → 搜索页</td><td class="green">100/10123 ▸</td><td>无</td><td>IndexWorker 入队</td></tr>
+      <tr><td>点击「索引全部」</td><td>索引进度页</td><td>无（被遮挡）</td><td>无</td><td>IndexWorker</td></tr>
+      <tr><td>索引页 → 返回</td><td>搜索页</td><td class="green">N/10123 ▸</td><td>无</td><td>继续运行</td></tr>
+      <tr><td>再次打开 (未完成)</td><td>搜索页</td><td>当前状态</td><td class="yellow">是</td><td>按用户选择</td></tr>
+      <tr><td>弹窗 → 继续</td><td>搜索页</td><td class="green">N/10123 ▸</td><td>无</td><td>IndexWorker 启动</td></tr>
+      <tr><td>弹窗 → 稍后</td><td>搜索页</td><td class="idle">开始索引 ▸</td><td>无</td><td>无</td></tr>
+      <tr><td>点击 Header Pill（索引中）</td><td>索引进度页</td><td>—</td><td>无</td><td>继续运行</td></tr>
+      <tr><td>全部完成</td><td>搜索页</td><td class="green">✓ 已完成</td><td>无</td><td>无</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 4. File Changes ===== -->
+<div class="section">
+  <div class="section-title">四、涉及文件变更</div>
+
+  <table>
+    <thead><tr><th>文件</th><th>变更内容</th></tr></thead>
+    <tbody>
+      <tr><td><code>MainScreen.kt</code></td>
+        <td>
+          1. 移除全屏遮罩的 <code>workRunning</code> 逻辑<br>
+          2. Header 增加 HeaderPill 组件（三种状态）<br>
+          3. 移除底部索引按钮<br>
+          4. 首次打开 DB=0 时显示索引选择页<br>
+          5. 再次打开时判断并弹窗<br>
+          6. 索引页改为可退出页面（不再是全屏遮罩）
+        </td>
+      </tr>
+      <tr><td><code>MainViewModel.kt</code></td>
+        <td>
+          1. 新增 <code>totalPhotoCount: StateFlow<Int></code> 首次扫描获取 MediaStore 总数<br>
+          2. 新增 <code>isIndexComplete: StateFlow<Boolean></code> 判断 DB count == total<br>
+          3. 新增 <code>continueIndexing()</code> 方法判断入队哪个 Worker<br>
+          4. 新增 <code>hasShownResumeDialog: MutableStateFlow<Boolean></code> 控制弹窗只显示一次
+        </td>
+      </tr>
+      <tr><td><code>IndexProgressView.kt</code></td>
+        <td>改为可退出的独立页面，增加返回按钮</td>
+      </tr>
+      <tr><td><code>HeaderIndexPill.kt</code> (新)</td>
+        <td>新建 Header Pill 组件：idle / indexing / done 三种状态</td>
+      </tr>
+      <tr><td><code>IndexChoicePage.kt</code> (新)</td>
+        <td>新建索引选择页面：快速 Top 100 / 索引全部 / 显示总数</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="note">
+  <strong>关键设计决策：</strong><br>
+  1. 索引完全依赖 App 运行 — 关闭 App 即取消 Worker<br>
+  2. 首次扫描获取 MediaStore 总数（轻量 COUNT 查询）<br>
+  3. Header Pill 三种状态：紫色「开始索引」、黑色呼吸点「N/总数」、绿色「已完成」<br>
+  4. 底部不再保留任何索引相关按钮 — 简洁搜索页
+</div>
+
+</body>
+</html>

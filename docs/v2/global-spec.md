@@ -251,6 +251,71 @@
 
 ---
 
+### Dev-8: 索引流程重构 + Header Pill 指示器
+
+**优先级**: P0 | **状态**: 待实施
+
+**问题**:
+1. 首次打开 App 时全屏遮罩显示索引进度，用户无法直接使用搜索功能
+2. 再次打开 App 时同样被全屏遮罩挡住，无法使用搜索
+3. 底部索引按钮太大太丑，抢夺搜索功能的视觉焦点
+4. 索引总数显示为 `50/...`，没有获取 MediaStore 真实总数
+5. 点击底部"索引照片"按钮无法正确继续全量索引（逻辑错误）
+
+**目标行为**:
+
+#### 首次启动 (DB=0)
+1. 显示**索引选择页**（不再是全屏遮罩），展示两个选项：
+   - 「快速索引 Top 100」— 约 1-2 分钟，先用起来
+   - 「索引全部照片」— 后台运行，可中断
+2. 页面顶部显示检测到的照片总数（如「检测到 10,123 张照片」）
+3. 用户选择后进入索引进度页（可退出）
+4. 快速索引 Top 100 完成后**自动进入搜索页**
+5. 索引全部时，前 100 张完成后也自动进入搜索页
+
+#### 再次启动 (DB>0)
+1. **直接进入搜索页**，不再显示全屏索引遮罩
+2. 判断索引状态：
+   - **全部完成**: Header Pill 显示绿色「✓ 已完成」
+   - **未完成**: 弹出对话框「您还有 X 张照片未完成索引，是否继续？」
+     - 「继续索引」→ 启动 IndexWorker
+     - 「稍后」→ 不启动 Worker，用户可后续点击 Header Pill 手动开始
+3. 索引进行中时，Header Pill 实时显示进度（如 `183 / 10123`）
+
+#### Header Pill 指示器（替换底部按钮）
+- **位置**: Header 右侧（「PicSearch」标题旁边）
+- **状态 1 — 未索引**: 紫色药丸 `开始索引 ▸`，点击 → 索引选择页
+- **状态 2 — 索引中**: 深色背景 + 绿色呼吸点 + `N / 总数 ▸`，点击 → 索引进度详情页
+- **状态 3 — 已完成**: 绿色背景 `✓ 已完成`，点击 → 索引选择页（可重建）
+- **尺寸**: height=28dp, rounded=16dp, font=12sp, weight=500
+- **动画**: 状态切换用 `AnimatedContent` 淡入淡出
+
+#### 底部区域
+- **不再保留任何索引相关按钮**，搜索结果区直接铺满
+
+#### 索引完全依赖 App 运行
+- 关闭 App（退出/杀后台）时取消 Worker
+- 不使用前台 Service
+
+**技术实现**:
+1. `MainViewModel` 新增 `totalPhotoCount: StateFlow<Int>` — init 时做一次轻量 MediaStore COUNT 查询
+2. `MainViewModel` 新增 `isIndexComplete: StateFlow<Boolean>` — DB count == total 时为 true
+3. `MainViewModel` 新增 `continueIndexing()` — 根据当前状态判断入队 QuickIndexWorker 或 IndexWorker
+4. `MainViewModel` 新增 `hasShownResumeDialog: MutableStateFlow<Boolean>` — 弹窗只显示一次
+5. `MainScreen` 移除 `workRunning` 全屏遮罩逻辑
+6. `MainScreen` 新增 `IndexChoicePage` 首次启动选择页
+7. 新建 `HeaderIndexPill` 组件
+8. `IndexProgressView` 改为可退出的独立页面（增加返回按钮）
+
+**文件**:
+- Create: `app/src/main/java/com/example/picsearch/ui/component/HeaderIndexPill.kt`
+- Create: `app/src/main/java/com/example/picsearch/ui/component/IndexChoicePage.kt`
+- Modify: `app/src/main/java/com/example/picsearch/MainViewModel.kt`
+- Modify: `app/src/main/java/com/example/picsearch/ui/screen/MainScreen.kt`
+- Modify: `app/src/main/java/com/example/picsearch/ui/component/IndexProgressView.kt`
+
+---
+
 ### Dev-3: 单元测试覆盖
 
 **优先级**: P1 | **状态**: 部分完成

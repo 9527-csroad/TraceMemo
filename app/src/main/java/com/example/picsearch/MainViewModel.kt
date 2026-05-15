@@ -3,6 +3,7 @@ package com.example.picsearch
 import android.content.Context
 import android.content.SharedPreferences
 import android.app.Application
+import android.provider.MediaStore
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
@@ -23,6 +24,7 @@ import com.example.picsearch.util.ReverseGeocoder
 import com.example.picsearch.util.FloatCodec
 import com.example.picsearch.util.ExtractedFilter
 import com.example.picsearch.util.NlpFilterExtractor
+import com.example.picsearch.worker.IndexWorker
 import com.example.picsearch.worker.KEY_INDEXED_COUNT
 import com.example.picsearch.worker.KEY_TOTAL_COUNT
 import com.example.picsearch.worker.PREFS_NAME
@@ -82,6 +84,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _extractedFilter = MutableStateFlow(ExtractedFilter())
     val extractedFilter: StateFlow<ExtractedFilter> = _extractedFilter
 
+    private val _totalPhotoCount = MutableStateFlow(0)
+    val totalPhotoCount: StateFlow<Int> = _totalPhotoCount
+
+    private val _isIndexComplete = MutableStateFlow(false)
+    val isIndexComplete: StateFlow<Boolean> = _isIndexComplete
+
+    private val _hasShownResumeDialog = MutableStateFlow(false)
+    val hasShownResumeDialog: StateFlow<Boolean> = _hasShownResumeDialog
+
     private lateinit var sceneClassifier: SceneClassifier
     private lateinit var nlpExtractor: NlpFilterExtractor
 
@@ -112,8 +123,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             sceneClassifier.initialize()
             nlpExtractor = NlpFilterExtractor(app)
             _sceneLabels.value = SceneClassifier.SCENES.map { it.displayName }
+
+            // Fetch total photo count from MediaStore (lightweight COUNT query)
+            var totalPhotos = 0
+            app.contentResolver.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Images.Media._ID),
+                null, null, null,
+            )?.use { cursor ->
+                totalPhotos = cursor.count
+            }
+            _totalPhotoCount.value = totalPhotos
+
             _ready.value = true
             _indexedCount.value = repo.count()
+            _isIndexComplete.value = totalPhotos > 0 && _indexedCount.value >= totalPhotos
             loadClusters()
 
             // 每 2 秒轮询数据库 count + SharedPreferences 全量索引进度
@@ -124,6 +148,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val newCount = repo.count()
                 if (newCount != _indexedCount.value) {
                     _indexedCount.value = newCount
+                    _isIndexComplete.value = _totalPhotoCount.value > 0 && newCount >= _totalPhotoCount.value
                     loadClusters()
                     // Reload scene tag counts when DB changes
                     val sceneCounts = mutableMapOf<String, Int>()
@@ -165,6 +190,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             .putInt(KEY_TOTAL_COUNT, 0)
             .apply()
         startIndex()
+    }
+
+    fun continueIndexing() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val dbCount = repo.count()
+            val total = _totalPhotoCount.value
+
+            if (total > 0 && dbCount >= total) return@launch
+
+            val ctx = getApplication<Application>()
+            val workManager = WorkManager.getInstance(ctx)
+
+            if (dbCount < 100) {
+                val quickRequest = OneTimeWorkRequestBuilder<QuickIndexWorker>().build()
+                workManager.enqueueUniqueWork("quick_index", ExistingWorkPolicy.REPLACE, quickRequest)
+            } else {
+                val fullRequest = OneTimeWorkRequestBuilder<IndexWorker>().build()
+                workManager.enqueueUniqueWork("full_index", ExistingWorkPolicy.REPLACE, fullRequest)
+            }
+        }
+    }
+
+    fun markResumeDialogShown() {
+        _hasShownResumeDialog.value = true
     }
 
     fun refreshCount() {

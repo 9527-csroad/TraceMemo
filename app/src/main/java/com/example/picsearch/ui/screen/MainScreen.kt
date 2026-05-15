@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,10 +34,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -44,7 +47,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -54,7 +56,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.work.WorkInfo
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.picsearch.MainViewModel
 import com.example.picsearch.data.LocationBounds
@@ -62,6 +65,9 @@ import com.example.picsearch.data.LocationCluster
 import com.example.picsearch.data.SearchFilter
 import com.example.picsearch.data.SearchSort
 import com.example.picsearch.data.TimeRange
+import com.example.picsearch.ui.component.HeaderIndexPill
+import com.example.picsearch.ui.component.IndexChoicePage
+import com.example.picsearch.ui.component.IndexPillState
 import com.example.picsearch.ui.component.LinearIndexProgress
 import com.example.picsearch.ui.component.ActiveFilterTags
 import com.example.picsearch.ui.component.EmptyStateView
@@ -75,6 +81,7 @@ import com.example.picsearch.ui.component.NoResultsView
 import com.example.picsearch.ui.component.SearchFilterPanel
 import com.example.picsearch.ui.component.SkeletonCard
 import com.example.picsearch.ui.theme.Primary
+import com.example.picsearch.worker.IndexWorker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -92,6 +99,9 @@ fun MainScreen(vm: MainViewModel) {
     val fullProgress by vm.fullIndexProgress.collectAsState()
     val currentSort by vm.searchSort.collectAsState()
     val extractedFilter by vm.extractedFilter.collectAsState()
+    val totalPhotos by vm.totalPhotoCount.collectAsState()
+    val isIndexDone by vm.isIndexComplete.collectAsState()
+    val hasShownDialog by vm.hasShownResumeDialog.collectAsState()
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -102,6 +112,10 @@ fun MainScreen(vm: MainViewModel) {
     var timeRange by remember { mutableStateOf<TimeRange?>(null) }
     var selectedCluster by remember { mutableStateOf<LocationCluster?>(null) }
     var selectedScenes by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    // Index page / dialog state
+    var showIndexProgress by remember { mutableStateOf(false) }
+    var showResumeDialog by remember { mutableStateOf(false) }
 
     val onSceneToggle: (String) -> Unit = { label ->
         selectedScenes = if (label in selectedScenes)
@@ -156,20 +170,34 @@ fun MainScreen(vm: MainViewModel) {
         permLauncher.launch(permissions)
     }
 
-    val quickWorkInfos by WorkManager.getInstance(ctx)
-        .getWorkInfosForUniqueWorkLiveData("quick_index")
-        .observeAsState()
-    val fullWorkInfos by WorkManager.getInstance(ctx)
-        .getWorkInfosForUniqueWorkLiveData("full_index")
-        .observeAsState()
-    val workRunning = (quickWorkInfos?.firstOrNull()?.let {
-        it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
-    } ?: false) || (fullWorkInfos?.firstOrNull()?.let {
-        it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
-    } ?: false)
+    val isIndexing = fullProgress != null
 
-    // Empty state
-    if (count == 0 && !workRunning) {
+    // Show resume dialog on return launch when indexing is incomplete
+    if (count > 0 && !isIndexing && !isIndexDone && !hasShownDialog) {
+        LaunchedEffect(Unit) {
+            showResumeDialog = true
+        }
+    }
+
+    // First launch: show index choice page when DB is empty
+    if (count == 0 && !isIndexing) {
+        if (totalPhotos > 0) {
+            IndexChoicePage(
+                totalCount = totalPhotos,
+                onQuickIndex = { startIndexWithPermission() },
+                onFullIndex = {
+                    val fullRequest = OneTimeWorkRequestBuilder<IndexWorker>().build()
+                    WorkManager.getInstance(ctx).enqueueUniqueWork(
+                        "full_index",
+                        ExistingWorkPolicy.REPLACE,
+                        fullRequest,
+                    )
+                    showIndexProgress = true
+                },
+            )
+            return
+        }
+        // No photos detected yet — show empty state
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = {
@@ -186,6 +214,26 @@ fun MainScreen(vm: MainViewModel) {
                 description = "开始索引你的照片，然后用文字描述就能找到它们。所有处理都在本机完成，隐私安全。",
                 actionText = "开始索引",
                 onAction = { startIndexWithPermission() },
+            )
+        }
+        return
+    }
+
+    // Index progress as a dismissible page
+    if (showIndexProgress) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center,
+        ) {
+            val (overlayIndexed, overlayTotal) = fullProgress ?: (count to totalPhotos)
+            val isQuickPhase = fullProgress == null && count < 100
+            IndexProgressView(
+                indexedCount = overlayIndexed,
+                totalCount = overlayTotal,
+                isQuickPhase = isQuickPhase,
+                onDismiss = { showIndexProgress = false },
             )
         }
         return
@@ -208,17 +256,44 @@ fun MainScreen(vm: MainViewModel) {
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
         ) {
-            // Header
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
-                Text(
-                    text = "PicSearch",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "用文字找到你的照片",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            // Header with Index Pill
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column {
+                    Text(
+                        text = "PicSearch",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = "用文字找到你的照片",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                val pillState = when {
+                    isIndexDone -> IndexPillState.Done
+                    isIndexing -> IndexPillState.Indexing(
+                        fullProgress?.first ?: count,
+                        fullProgress?.second ?: totalPhotos.coerceAtLeast(count),
+                    )
+                    else -> IndexPillState.Idle
+                }
+                HeaderIndexPill(
+                    state = pillState,
+                    onClick = {
+                        when (pillState) {
+                            is IndexPillState.Idle -> startIndexWithPermission()
+                            is IndexPillState.Indexing -> showIndexProgress = true
+                            is IndexPillState.Done -> startIndexWithPermission()
+                        }
+                    },
                 )
             }
 
@@ -381,81 +456,47 @@ fun MainScreen(vm: MainViewModel) {
                     }
                 }
             }
-
-            // Bottom index button / progress
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                color = if (fullProgress != null)
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                else
-                    Primary,
-                shape = RoundedCornerShape(12.dp),
-            ) {
-                if (fullProgress != null) {
-                    val (indexed, total) = fullProgress!!
-                    LinearIndexProgress(
-                        indexedCount = indexed,
-                        totalCount = total,
-                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
-                        onCancel = { /* WorkManager handles cancellation */ },
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .combinedClickable(
-                                onClick = { startIndexWithPermission() },
-                                onLongClick = {
-                                    Toast.makeText(ctx, "长按触发全量重建索引", Toast.LENGTH_SHORT).show()
-                                    vm.startFullRebuild()
-                                },
-                            )
-                            .padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Outlined.AddPhotoAlternate,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp),
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                text = "索引照片",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                text = "已索引 $count 张照片",
-                                color = Color.White.copy(alpha = 0.7f),
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                }
-            }
         } // Column end
     } // PullToRefreshBox end
 
-    // Index progress overlay
-    if (workRunning) {
-        val (overlayIndexed, overlayTotal) = fullProgress ?: (count to null)
-        val isQuickPhase = fullProgress == null && count < 100
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.95f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            IndexProgressView(
-                indexedCount = overlayIndexed,
-                totalCount = overlayTotal,
-                isQuickPhase = isQuickPhase,
-            )
-        }
+    // Resume indexing dialog
+    if (showResumeDialog && !isIndexDone && !hasShownDialog) {
+        val remaining = (totalPhotos - count).coerceAtLeast(0)
+        AlertDialog(
+            onDismissRequest = {
+                showResumeDialog = false
+                vm.markResumeDialogShown()
+            },
+            title = { Text("继续索引？") },
+            text = {
+                Column {
+                    Text("您还有 $remaining 张照片未完成索引。是否继续索引？")
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "退出 App 将停止索引",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showResumeDialog = false
+                    vm.markResumeDialogShown()
+                    vm.continueIndexing()
+                }) {
+                    Text("继续索引")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showResumeDialog = false
+                    vm.markResumeDialogShown()
+                }) {
+                    Text("稍后")
+                }
+            },
+        )
     }
 
     // Image detail sheet
